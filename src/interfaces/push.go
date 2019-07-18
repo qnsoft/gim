@@ -9,12 +9,12 @@
 package interfaces
 
 import (
-	"gim/src/server"
+	"gim/src/im"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func Push(ctx *gin.Context) {
-	server.Broadcast <- ctx.PostForm("message")
+	im.Broadcast <- ctx.DefaultPostForm("message", "")
 	ctx.String(http.StatusOK, "ok")
 }

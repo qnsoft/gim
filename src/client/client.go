@@ -19,7 +19,7 @@ func main() {
 	// 与服务端建立连接
 	connection, err := net.Dial("tcp", "0.0.0.0:8088")
 	if err != nil {
-		log.Panicln("Unable to connect to server: ", err)
+		log.Panicln("Unable to connect to im: ", err)
 		return
 	}
 	log.Println("Connection succeeded.")

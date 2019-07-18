@@ -1,48 +1,51 @@
 /*
 @ Author:       Wang XiaoQiang
 @ Github:       https://github.com/wangxiaoqiange
-@ File:         server.go
-@ Create Time:  2019-07-18 12:49
+@ File:         handler.go
+@ Create Time:  2019/7/18 22:56
 @ Software:     GoLand
 */
 
-package server
+package im
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
 	"time"
 )
 
-// 客户端结构体
-type Client struct {
+type User struct {
 	Addr string      // 客户端地址
-	C    chan string // 单播, 只对自己可见
+	C    chan string // 单播, 仅自己可见
 }
 
-// 在线客户端队列
-var onlineMap = make(map[string]Client)
+// 聊天室
+type ChatRoom struct {
+	onlineMap map[string]User
+	Broadcast chan string
+}
 
-// 广播通道
-var Broadcast = make(chan string)
+// 接口封装
+type Handler interface {
+	Say()
+}
 
 // 消息格式化
-func makeMessage(client Client, msg string) (message string) {
-	message = fmt.Sprintf("[ %s ] -> %s", client.Addr, msg)
-	return
-}
+//func makeMessage(client Client, msg string) (message string) {
+//	message = fmt.Sprintf("[ %s ] -> %s", client.Addr, msg)
+//	return
+//}
 
-func handleConnection(conn net.Conn) {
+// 基于聊天室的连接处理
+func (c ChatRoom) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	// 客户端实例化
 	clientAddress := conn.RemoteAddr().String()
 	client := Client{clientAddress, make(chan string)}
 
-	online := make(chan bool)
-	offline := make(chan bool)
+	online, offline := make(chan bool), make(chan bool)
 
 	// 加入在线队列
 	onlineMap[clientAddress] = client
@@ -95,40 +98,5 @@ func handleConnection(conn net.Conn) {
 			Broadcast <- makeMessage(client, "Time out")
 			return
 		}
-	}
-}
-
-func Run() {
-	host, port := "0.0.0.0", 8088
-	// 启动IM服务端程序
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
-	if err != nil {
-		log.Println("IM startup failed !", err)
-		return
-	}
-	log.Printf("IM service starting TCP on: %s:%d\n", host, port)
-
-	defer listener.Close()
-
-	// 监听广播通道
-	go func() {
-		for {
-			message := <-Broadcast
-			// 遍历在线队列, 通知用户
-			for _, client := range onlineMap {
-				client.C <- message
-			}
-		}
-	}()
-
-	// 监听客户端连接
-	for {
-		connection, err := listener.Accept()
-		if err != nil {
-			log.Println("Listener accept error", err)
-			continue
-		}
-		// 处理连接
-		go handleConnection(connection)
 	}
 }

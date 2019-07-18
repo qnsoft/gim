@@ -9,14 +9,14 @@
 package main
 
 import (
+	"gim/src/im"
 	. "gim/src/routers"
-	"gim/src/server"
 	"log"
 )
 
 func main() {
 	// Start IM service
-	go server.Run()
+	go im.Run()
 	// Start Restful API
 	if err := App.Run(); err != nil {
 		log.Println("Service startup failed !", err)

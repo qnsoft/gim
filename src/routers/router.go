@@ -19,12 +19,12 @@ var App *gin.Engine
 func init() {
 	App = gin.Default()
 
-	App.Any("/", func(ctx *gin.Context) {
+	App.GET("/", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello world")
 	})
 
 	App.GET("/trying", Trying)
 
-	server := App.Group("/server")
-	server.POST("/broadcast", Push)
+	im := App.Group("/im")
+	im.POST("/push", Push)
 }
