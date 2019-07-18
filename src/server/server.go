@@ -26,7 +26,7 @@ type Client struct {
 var onlineMap = make(map[string]Client)
 
 // 广播通道
-var broadcast = make(chan string)
+var Broadcast = make(chan string)
 
 // 消息格式化
 func makeMessage(client Client, msg string) (message string) {
@@ -47,7 +47,7 @@ func handleConnection(conn net.Conn) {
 	// 加入在线队列
 	onlineMap[clientAddress] = client
 	// 广播用户上线
-	broadcast <- makeMessage(client, "Login")
+	Broadcast <- makeMessage(client, "Login")
 
 	// 向当前用户发送数据
 	go func() {
@@ -75,7 +75,7 @@ func handleConnection(conn net.Conn) {
 				return
 			}
 			// 广播用户数据
-			broadcast <- makeMessage(client, string(buf[:n]))
+			Broadcast <- makeMessage(client, string(buf[:n]))
 			online <- true
 		}
 	}()
@@ -87,12 +87,12 @@ func handleConnection(conn net.Conn) {
 		// 异常退出
 		case <-offline:
 			delete(onlineMap, clientAddress)
-			broadcast <- makeMessage(client, "Logout")
+			Broadcast <- makeMessage(client, "Logout")
 			return
 		// 超时退出
-		case <-time.After(30 * time.Second):
+		case <-time.After(30000 * time.Second):
 			delete(onlineMap, clientAddress)
-			broadcast <- makeMessage(client, "Time out")
+			Broadcast <- makeMessage(client, "Time out")
 			return
 		}
 	}
@@ -113,7 +113,7 @@ func Run() {
 	// 监听广播通道
 	go func() {
 		for {
-			message := <-broadcast
+			message := <-Broadcast
 			// 遍历在线队列, 通知用户
 			for _, client := range onlineMap {
 				client.C <- message

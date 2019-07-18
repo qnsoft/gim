@@ -24,4 +24,7 @@ func init() {
 	})
 
 	App.GET("/trying", Trying)
+
+	server := App.Group("/server")
+	server.POST("/broadcast", Push)
 }
