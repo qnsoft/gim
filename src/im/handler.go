@@ -13,12 +13,16 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 	"time"
 )
 
 // 客户端
 type Client struct {
-	Addr string      // 客户端地址, 由客户端维护该地址的唯一性
+	Id   string      // 客户端唯一ID, 由客户端维护该字段的唯一性
+	Name string      // 客户端名称
+	City string      // 城市
+	Addr string      // 客户端地址
 	C    chan string // 单播, 仅自己可见
 }
 
@@ -30,7 +34,7 @@ type ChatRoom struct {
 
 // 消息格式化
 func makeMessage(client Client, msg string) (message string) {
-	message = fmt.Sprintf("[ %s ] -> %s", client.Addr, msg)
+	message = fmt.Sprintf("[ %s:%s ] -> %s", client.Id, client.Name, msg)
 	return
 }
 
@@ -63,14 +67,30 @@ func (c ChatRoom) listener(listener net.Listener) {
 func (c ChatRoom) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// 客户端实例化
-	clientAddress := conn.RemoteAddr().String()
-	client := Client{clientAddress, make(chan string)}
-
 	online, offline := make(chan bool), make(chan bool)
 
+	// 客户端实例化
+	var client Client
+	buf := make([]byte, 1024)
+	for {
+		n, _ := conn.Read(buf)
+		if n < 1024 {
+			if strings.HasPrefix(string(buf[:n]), "PROFILE:") {
+				profile := strings.Split(string(buf[:n]), ":")[1]
+				body := strings.Split(profile, "|")
+				client = Client{
+					body[0], body[1], body[2], conn.RemoteAddr().String(), make(chan string),
+				}
+			} else {
+				offline <- true
+			}
+			break
+		}
+	}
+
 	// 加入在线队列
-	c.onlineMap[clientAddress] = client
+	unique := fmt.Sprintf("%s<->%s", client.Id, client.Addr)
+	c.onlineMap[unique] = client
 	// 广播用户上线
 	c.Broadcast <- makeMessage(client, "Login")
 
@@ -84,6 +104,9 @@ func (c ChatRoom) handleConnection(conn net.Conn) {
 			}
 		}
 	}()
+
+	// 向当前用户发送欢迎语
+	client.C <- makeMessage(client, "Welcome to the GIM ChatRoom mode ^_^")
 
 	// 接收当前用户输入数据
 	go func() {
@@ -109,14 +132,14 @@ func (c ChatRoom) handleConnection(conn net.Conn) {
 	for {
 		select {
 		case <-online:
-		// 异常退出
+		// 主动断开
 		case <-offline:
-			delete(c.onlineMap, clientAddress)
+			delete(c.onlineMap, unique)
 			c.Broadcast <- makeMessage(client, "Logout")
 			return
 		// 超时退出
-		case <-time.After(30000 * time.Second):
-			delete(c.onlineMap, clientAddress)
+		case <-time.After(30 * time.Second):
+			delete(c.onlineMap, unique)
 			c.Broadcast <- makeMessage(client, "Time out")
 			return
 		}

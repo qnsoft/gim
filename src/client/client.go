@@ -9,34 +9,66 @@
 package main
 
 import (
-	"io"
+	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
-func main() {
-	// 与服务端建立连接
-	connection, err := net.Dial("tcp", "0.0.0.0:8088")
-	if err != nil {
-		log.Panicln("Unable to connect to im: ", err)
-		return
-	}
-	log.Println("Connection succeeded.")
+var (
+	help     bool
+	id       string
+	name     string
+	city     string
+	retry    int
+	interval int
+	mode     string
+	callback Callback
+)
 
-	defer connection.Close()
+type Client struct {
+	Id   string
+	Name string
+	City string
+}
+
+type Callback func(conn net.Conn, client Client)
+
+func (c Client) Handler(retry, interval int, callback Callback) {
+	for try := 0; try < retry; try++ {
+		conn, err := net.DialTimeout("tcp", "0.0.0.0:8088", 3*time.Second)
+		if err != nil {
+			<-time.After(time.Duration(try*interval) * time.Second)
+			log.Printf("Trying to reconnect %d...", try+1)
+			continue
+		}
+		callback(conn, c)
+	}
+	log.Println("Unable to connect to im server.")
+}
+
+// 聊天室模式
+func ChatRoom(conn net.Conn, client Client) {
+	defer conn.Close()
+	fmt.Println("1111")
+	closed := make(chan bool)
+
+	// 发送基础数据
+	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s", client.Id, client.Name, client.City)))
+	if err != nil {
+		log.Println("Send profile failed: ", err)
+	}
 
 	// 接收服务器返回数据
 	go func() {
-		buf := make([]byte, 2*1024)
+		buf := make([]byte, 1024)
 		for {
-			n, err := connection.Read(buf)
+			n, err := conn.Read(buf)
 			if err != nil {
-				if err == io.EOF {
-					log.Println("Connection is closed.")
-					return
-				}
-				log.Println("Recv data error: ", err)
+				closed <- true
+				log.Println("Connection is closed.")
 				return
 			}
 			log.Println(string(buf[:n]))
@@ -44,18 +76,80 @@ func main() {
 	}()
 
 	// 监听用户输入, 向服务器发送数据
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := os.Stdin.Read(buf)
+			if err != nil {
+				log.Println("Stdin error: ", err)
+				continue
+			}
+			_, err = conn.Write(buf[:n])
+			if err != nil {
+				closed <- true
+				log.Println("Send data error: ", err)
+				return
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-closed:
+			return
+		default:
+		}
+	}
+}
+
+// 被动监听模式
+func Listener(conn net.Conn, client Client) {
+	defer conn.Close()
+	fmt.Println("2222")
+	// 发送基础数据
+	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s", client.Id, client.Name, client.City)))
+	if err != nil {
+		log.Println("Send profile failed: ", err)
+	}
+
+	// 接收服务器返回数据
 	buf := make([]byte, 1024)
 	for {
-		// 监听标准输入
-		n, err := os.Stdin.Read(buf)
+		n, err := conn.Read(buf)
 		if err != nil {
-			log.Println("Stdin error: ", err)
+			log.Println("Connection is closed.")
 			return
 		}
-		_, err = connection.Write(buf[:n])
-		if err != nil {
-			log.Println("Send data error: ", err)
-			return
+		log.Println(string(buf[:n]))
+	}
+}
+
+func main() {
+	flag.BoolVar(&help, "help", false, "")
+	flag.StringVar(&id, "id", "0827", "Client unique id")
+	flag.StringVar(&name, "name", "guest", "Client name")
+	flag.StringVar(&city, "city", "BJ", "Client city name")
+	flag.IntVar(&retry, "retry", 3, "Number of connection retries")
+	flag.IntVar(&interval, "interval", 1, "Connection retry interval")
+	flag.StringVar(&mode, "mode", "chatroom", "Access mode, [chatroom, listener]")
+
+	flag.Parse()
+
+	if help {
+		flag.Usage()
+	} else {
+		// 客户端实例化
+		client := Client{id, name, city}
+		// 模式判断
+		switch mode {
+		case "chatroom":
+			callback = ChatRoom
+		case "listener":
+			callback = Listener
+		default:
+			callback = ChatRoom
 		}
+		// 断线重连次数、间隔、回调函数 模式
+		client.Handler(retry, interval, callback)
 	}
 }
