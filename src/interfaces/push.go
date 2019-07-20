@@ -9,12 +9,13 @@
 package interfaces
 
 import (
+	"fmt"
 	"gim/src/im"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func Push(ctx *gin.Context) {
-	im.Broadcast <- ctx.DefaultPostForm("message", "")
+	im.ChatRoomInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", ctx.DefaultPostForm("message", ""))
 	ctx.String(http.StatusOK, "ok")
 }

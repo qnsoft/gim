@@ -9,33 +9,61 @@
 package im
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"time"
 )
 
-type User struct {
-	Addr string      // 客户端地址
+// 客户端
+type Client struct {
+	Addr string      // 客户端地址, 由客户端维护该地址的唯一性
 	C    chan string // 单播, 仅自己可见
 }
 
 // 聊天室
 type ChatRoom struct {
-	onlineMap map[string]User
-	Broadcast chan string
+	onlineMap map[string]Client // 在线队列
+	Broadcast chan string       // 广播通道
 }
 
 // 接口封装
 type Handler interface {
-	Say()
+	listener()
+	handleConnection()
 }
 
 // 消息格式化
-//func makeMessage(client Client, msg string) (message string) {
-//	message = fmt.Sprintf("[ %s ] -> %s", client.Addr, msg)
-//	return
-//}
+func makeMessage(client Client, msg string) (message string) {
+	message = fmt.Sprintf("[ %s ] -> %s", client.Addr, msg)
+	return
+}
+
+// 基于聊天室的连接监听
+func (c ChatRoom) listener(listener net.Listener) {
+	// 监听广播通道
+	go func() {
+		for {
+			message := <-c.Broadcast
+			// 遍历在线队列, 通知用户
+			for _, client := range c.onlineMap {
+				client.C <- message
+			}
+		}
+	}()
+
+	// 监听连接请求
+	for {
+		connection, err := listener.Accept()
+		if err != nil {
+			log.Println("Listener accept error", err)
+			continue
+		}
+		// 处理连接
+		go c.handleConnection(connection)
+	}
+}
 
 // 基于聊天室的连接处理
 func (c ChatRoom) handleConnection(conn net.Conn) {
@@ -48,9 +76,9 @@ func (c ChatRoom) handleConnection(conn net.Conn) {
 	online, offline := make(chan bool), make(chan bool)
 
 	// 加入在线队列
-	onlineMap[clientAddress] = client
+	c.onlineMap[clientAddress] = client
 	// 广播用户上线
-	Broadcast <- makeMessage(client, "Login")
+	c.Broadcast <- makeMessage(client, "Login")
 
 	// 向当前用户发送数据
 	go func() {
@@ -78,7 +106,7 @@ func (c ChatRoom) handleConnection(conn net.Conn) {
 				return
 			}
 			// 广播用户数据
-			Broadcast <- makeMessage(client, string(buf[:n]))
+			c.Broadcast <- makeMessage(client, string(buf[:n]))
 			online <- true
 		}
 	}()
@@ -89,13 +117,13 @@ func (c ChatRoom) handleConnection(conn net.Conn) {
 		case <-online:
 		// 异常退出
 		case <-offline:
-			delete(onlineMap, clientAddress)
-			Broadcast <- makeMessage(client, "Logout")
+			delete(c.onlineMap, clientAddress)
+			c.Broadcast <- makeMessage(client, "Logout")
 			return
 		// 超时退出
 		case <-time.After(30000 * time.Second):
-			delete(onlineMap, clientAddress)
-			Broadcast <- makeMessage(client, "Time out")
+			delete(c.onlineMap, clientAddress)
+			c.Broadcast <- makeMessage(client, "Time out")
 			return
 		}
 	}
