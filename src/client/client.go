@@ -19,6 +19,8 @@ import (
 
 var (
 	help     bool
+	host     string
+	port     int
 	id       string
 	name     string
 	city     string
@@ -32,13 +34,14 @@ type Client struct {
 	Id   string
 	Name string
 	City string
+	Mode string
 }
 
 type Callback func(conn net.Conn, client Client)
 
 func (c Client) Handler(retry, interval int, callback Callback) {
 	for try := 0; try < retry; try++ {
-		conn, err := net.DialTimeout("tcp", "0.0.0.0:8088", 3*time.Second)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 3*time.Second)
 		if err != nil {
 			<-time.After(time.Duration(try*interval) * time.Second)
 			log.Printf("Trying to reconnect %d...", try+1)
@@ -52,11 +55,11 @@ func (c Client) Handler(retry, interval int, callback Callback) {
 // 聊天室模式
 func ChatRoom(conn net.Conn, client Client) {
 	defer conn.Close()
-	fmt.Println("1111")
-	closed := make(chan bool)
+
+	online, closed := make(chan bool), make(chan bool)
 
 	// 发送基础数据
-	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s", client.Id, client.Name, client.City)))
+	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s|%s", client.Id, client.Name, client.City, client.Mode)))
 	if err != nil {
 		log.Println("Send profile failed: ", err)
 	}
@@ -71,6 +74,7 @@ func ChatRoom(conn net.Conn, client Client) {
 				log.Println("Connection is closed.")
 				return
 			}
+			online <- true
 			log.Println(string(buf[:n]))
 		}
 	}()
@@ -95,9 +99,9 @@ func ChatRoom(conn net.Conn, client Client) {
 
 	for {
 		select {
+		case <-online:
 		case <-closed:
 			return
-		default:
 		}
 	}
 }
@@ -105,11 +109,12 @@ func ChatRoom(conn net.Conn, client Client) {
 // 被动监听模式
 func Listener(conn net.Conn, client Client) {
 	defer conn.Close()
-	fmt.Println("2222")
+
 	// 发送基础数据
-	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s", client.Id, client.Name, client.City)))
+	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s|%s", client.Id, client.Name, client.City, client.Mode)))
 	if err != nil {
 		log.Println("Send profile failed: ", err)
+		return
 	}
 
 	// 接收服务器返回数据
@@ -126,6 +131,8 @@ func Listener(conn net.Conn, client Client) {
 
 func main() {
 	flag.BoolVar(&help, "help", false, "")
+	flag.StringVar(&host, "host", "127.0.0.1", "GIM server address")
+	flag.IntVar(&port, "port", 8088, "GIM server listener port")
 	flag.StringVar(&id, "id", "0827", "Client unique id")
 	flag.StringVar(&name, "name", "guest", "Client name")
 	flag.StringVar(&city, "city", "BJ", "Client city name")
@@ -139,7 +146,7 @@ func main() {
 		flag.Usage()
 	} else {
 		// 客户端实例化
-		client := Client{id, name, city}
+		client := Client{id, name, city, mode}
 		// 模式判断
 		switch mode {
 		case "chatroom":

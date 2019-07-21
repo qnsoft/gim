@@ -14,7 +14,10 @@ import (
 	"net"
 )
 
-var ChatRoomInstance ChatRoom
+var (
+	ChatRoomInstance    ChatRoom
+	MessagePushInstance MessagePush
+)
 
 func init() {
 	go func() {
@@ -28,8 +31,11 @@ func init() {
 
 		defer listener.Close()
 
-		// 聊天室实例化
-		ChatRoomInstance = ChatRoom{make(map[string]Client), make(chan string)}
-		ChatRoomInstance.listener(listener)
+		// 聊天室模式初始化
+		ChatRoomInstance = ChatRoom{Base{make(map[string]Client), make(chan string)}}
+		// 消息推送模式初始化
+		MessagePushInstance = MessagePush{Base{make(map[string]Client), make(chan string)}}
+		// GIM 处理器实例化
+		GIMHandler(listener)
 	}()
 }

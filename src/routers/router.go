@@ -12,6 +12,7 @@ import (
 	. "gim/src/interfaces"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 var App *gin.Engine
@@ -20,10 +21,11 @@ func init() {
 	App = gin.Default()
 
 	App.GET("/", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "Hello world")
+		ctx.JSON(http.StatusOK, gin.H{
+			"msg":  "Hello world",
+			"time": time.Now().Format("2006-01-02 15:04:05"),
+		})
 	})
-
-	App.GET("/trying", Trying)
 
 	im := App.Group("/im")
 	im.POST("/push", Push)
