@@ -45,7 +45,7 @@ type MessagePush struct {
 
 // 消息格式化
 func makeMessage(client Client, msg string) (message string) {
-	message = fmt.Sprintf("[ %s:%s ] -> %s", client.Id, client.Name, msg)
+	message = fmt.Sprintf("[ %s:%s ] -> %s\n", client.Id, client.Name, msg)
 	return
 }
 

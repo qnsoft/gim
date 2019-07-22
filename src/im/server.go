@@ -9,9 +9,10 @@
 package im
 
 import (
-	"fmt"
 	"log"
 	"net"
+	"os"
+	"strings"
 )
 
 var (
@@ -19,15 +20,15 @@ var (
 	MessagePushInstance MessagePush
 )
 
-func init() {
+func Run() {
 	go func() {
-		host, port := "0.0.0.0", 8088
+		address := strings.Join([]string{os.Getenv("IMHost"), os.Getenv("IMPort")}, ":")
 		// 启动IM服务端程序
-		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
+		listener, err := net.Listen("tcp", address)
 		if err != nil {
 			log.Fatalln("IM service startup failed !", err)
 		}
-		log.Printf("IM service starting TCP on: %s:%d\n", host, port)
+		log.Printf("IM service starting TCP on: %s\n", address)
 
 		defer listener.Close()
 

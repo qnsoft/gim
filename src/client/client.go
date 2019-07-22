@@ -26,6 +26,7 @@ var (
 	city     string
 	retry    int
 	interval int
+	loop     bool
 	mode     string
 	callback Callback
 )
@@ -39,12 +40,17 @@ type Client struct {
 
 type Callback func(conn net.Conn, client Client)
 
-func (c Client) Handler(retry, interval int, callback Callback) {
+func (c Client) Handler(retry, interval int, loop bool, callback Callback) {
 	for try := 0; try < retry; try++ {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 3*time.Second)
 		if err != nil {
 			<-time.After(time.Duration(try*interval) * time.Second)
-			log.Printf("Trying to reconnect %d...", try+1)
+			log.Println("Trying to reconnect...")
+
+			if loop {
+				try--
+				<-time.After(time.Duration(interval) * time.Second)
+			}
 			continue
 		}
 		callback(conn, c)
@@ -137,7 +143,8 @@ func main() {
 	flag.StringVar(&name, "name", "guest", "Client name")
 	flag.StringVar(&city, "city", "BJ", "Client city name")
 	flag.IntVar(&retry, "retry", 3, "Number of connection retries")
-	flag.IntVar(&interval, "interval", 1, "Connection retry interval")
+	flag.IntVar(&interval, "interval", 3, "Connection retry interval")
+	flag.BoolVar(&loop, "loop", false, "Infinite retry")
 	flag.StringVar(&mode, "mode", "chatroom", "Access mode, [chatroom, listener]")
 
 	flag.Parse()
@@ -157,6 +164,6 @@ func main() {
 			callback = ChatRoom
 		}
 		// 断线重连次数、间隔、回调函数 模式
-		client.Handler(retry, interval, callback)
+		client.Handler(retry, interval, loop, callback)
 	}
 }
