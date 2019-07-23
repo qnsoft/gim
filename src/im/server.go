@@ -9,9 +9,10 @@
 package im
 
 import (
+	. "gim/src/models"
 	"log"
 	"net"
-	"os"
+	"strconv"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ var (
 
 func Run() {
 	go func() {
-		address := strings.Join([]string{os.Getenv("IMHost"), os.Getenv("IMPort")}, ":")
+		address := strings.Join([]string{Config.Server.HOST, strconv.Itoa(Config.Server.PORT)}, ":")
 		// 启动IM服务端程序
 		listener, err := net.Listen("tcp", address)
 		if err != nil {

@@ -9,50 +9,27 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"fmt"
 	"gim/src/im"
-	"gim/src/models"
+	. "gim/src/models"
 	. "gim/src/routers"
-	"io/ioutil"
 	"log"
 	"os"
 )
 
 var (
-	help   bool
-	post   string
-	imHost string
-	imPort string
+	help bool
+	post string
 )
-
-type Config struct {
-	Redis models.Redis
-}
-
-func (conf Config) Load(path string) {
-	buf, err := ioutil.ReadFile(path)
-	if err != nil {
-		return
-	}
-	_ = json.Unmarshal(buf, conf)
-}
 
 func main() {
 	flag.BoolVar(&help, "help", false, "")
 	flag.StringVar(&post, "port", "8080", "GIM restful api port")
-	flag.StringVar(&imHost, "imhost", "0.0.0.0", "GIM server host")
-	flag.StringVar(&imPort, "import", "8088", "GIM server port")
 	flag.Parse()
 
 	_ = os.Setenv("PORT", post)
-	_ = os.Setenv("IMHost", imHost)
-	_ = os.Setenv("IMPort", imPort)
 
-	Conf := Config{}
-	Conf.Load("src/config/config.json")
-	fmt.Printf("Config: %+v\n", Conf)
+	Config.Print()
 
 	if help {
 		flag.Usage()

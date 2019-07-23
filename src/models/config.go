@@ -11,16 +11,40 @@ package models
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 )
 
-type Config struct {
-	Redis Redis
+var Config Conf
+
+// IM Server
+type Server struct {
+	HOST string `json:"host"`
+	PORT int    `json:"port"`
 }
 
-func (conf Config) Load(path string) {
-	buf, err := ioutil.ReadFile(path)
+// 配置文件结构体
+type Conf struct {
+	Server Server
+	Redis  Redis
+}
+
+// 自定义json格式化打印方法
+func (c Conf) Print() {
+	buf, err := json.MarshalIndent(c, "", "\t")
 	if err != nil {
-		return
+		log.Println("Error: ", err)
 	}
-	_ = json.Unmarshal(buf, conf)
+	log.Println(string(buf))
+}
+
+// 加载配置文件
+func init() {
+	buf, err := ioutil.ReadFile("src/config/config.json")
+	if err != nil {
+		log.Fatalf("Unable to load configuration file: %v", err)
+	}
+	err = json.Unmarshal(buf, &Config)
+	if err != nil {
+		log.Fatalf("Configuration file format error: %v", err)
+	}
 }

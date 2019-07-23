@@ -14,12 +14,12 @@ import (
 )
 
 type Redis struct {
-	HOST string `json:"host"`
-	PORT int    `json:"port"`
-	//DB          int    `json:"db"`
-	//MaxIdle     int    `json:"max_idle"`
-	//MaxActive   int    `json:"max_active"`
-	//IdleTimeout int    `json:"idle_timeout"`
+	HOST        string `json:"host"`
+	PORT        int    `json:"port"`
+	DB          int    `json:"db"`
+	MaxIdle     int    `json:"max_idle"`
+	MaxActive   int    `json:"max_active"`
+	IdleTimeout int    `json:"idle_timeout"`
 }
 
 var Pool *redis.Pool
