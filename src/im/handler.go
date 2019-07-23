@@ -72,7 +72,7 @@ func (b Base) Subscribe() {
 
 }
 
-// 基于聊天室的连接处理
+// 基于聊天室的连接处理: Standalone
 func (c ChatRoom) standaloneHandler(conn net.Conn, client Client) {
 	defer conn.Close()
 
@@ -136,7 +136,7 @@ func (c ChatRoom) standaloneHandler(conn net.Conn, client Client) {
 	}
 }
 
-// 基于消息推送的连接处理
+// 基于消息推送的连接处理: Standalone
 func (m MessagePush) standaloneHandler(conn net.Conn, client Client) {
 	defer conn.Close()
 
@@ -172,7 +172,7 @@ func (m MessagePush) standaloneHandler(conn net.Conn, client Client) {
 	}
 }
 
-// 基于聊天室的连接处理
+// 基于聊天室的连接处理: Cluster
 func (c ChatRoom) clusterHandler(conn net.Conn, client Client) {
 	defer conn.Close()
 
@@ -246,7 +246,7 @@ func (c ChatRoom) clusterHandler(conn net.Conn, client Client) {
 	}
 }
 
-// 基于消息推送的连接处理
+// 基于消息推送的连接处理: Cluster
 func (m MessagePush) clusterHandler(conn net.Conn, client Client) {
 	defer conn.Close()
 
