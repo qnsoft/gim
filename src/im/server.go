@@ -9,19 +9,141 @@
 package im
 
 import (
+	"fmt"
 	. "gim/src/models"
+	"github.com/gomodule/redigo/redis"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 )
 
+// 客户端
+type Client struct {
+	Id   string      // 客户端唯一ID, 由客户端维护该字段的唯一性
+	Name string      // 客户端名称
+	City string      // 城市
+	Addr string      // 客户端地址
+	Mode string      // 客户端模式
+	C    chan string // 单播, 仅自己可见
+}
+
+// 基础数据结构
+type Base struct {
+	Mode      string            // 运行方式
+	onlineMap map[string]Client // 在线队列
+	Broadcast chan string       // 广播通道
+}
+
+// 聊天室模式
+type ChatRoom struct {
+	Base
+}
+
+// 消息推送模式
+type MessagePush struct {
+	Base
+}
+
 var (
 	ChatRoomInstance    ChatRoom
 	MessagePushInstance MessagePush
 )
 
-func Run() {
+// 消息格式化
+func makeMessage(client Client, msg string) (message string) {
+	message = fmt.Sprintf("[ %s:%s ] -> %s\n", client.Id, client.Name, msg)
+	return
+}
+
+// GIM 处理器
+func GIMHandler(listener net.Listener, mode string) {
+	switch mode {
+	case "cluster":
+		go func() {
+			c := Pool.Get()
+			psc := redis.PubSubConn{Conn: c}
+			_ = psc.Subscribe("appkey:Broadcast")
+			for {
+				switch v := psc.Receive().(type) {
+				case redis.Message:
+					ChatRoomInstance.getOnlineMap()
+					//ChatRoomInstance.Publish("")
+					log.Println(string(v.Data))
+				case redis.Subscription:
+				case error:
+					log.Printf("Unknown type: %+v, %T", v, v)
+					return
+				}
+			}
+		}()
+	default:
+		// 聊天室模式广播通道监听
+		go func() {
+			for {
+				message := <-ChatRoomInstance.Broadcast
+				// 遍历在线队列, 通知用户
+				for _, client := range ChatRoomInstance.onlineMap {
+					client.C <- message
+				}
+			}
+		}()
+
+		// 消息推送模式广播通道监听
+		go func() {
+			for {
+				message := <-MessagePushInstance.Broadcast
+				// 遍历在线队列, 通知用户
+				for _, client := range MessagePushInstance.onlineMap {
+					client.C <- message
+				}
+			}
+		}()
+	}
+
+	// 监听连接请求
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println("Listener accept error", err)
+			continue
+		}
+		// 客户端实例化
+		var client Client
+		buf := make([]byte, 1024)
+		for {
+			n, _ := conn.Read(buf)
+			if n < 1024 {
+				if strings.HasPrefix(string(buf[:n]), "PROFILE:") {
+					profile := strings.Split(string(buf[:n]), ":")[1]
+					body := strings.Split(strings.ToLower(profile), "|")
+					client = Client{
+						body[0], body[1], body[2], conn.RemoteAddr().String(), body[3], make(chan string),
+					}
+				}
+				break
+			}
+		}
+		switch client.Mode {
+		// 聊天室模式连接处理
+		case "chatroom":
+			if ChatRoomInstance.Mode == "cluster" {
+				go ChatRoomInstance.clusterHandler(conn, client)
+			} else {
+				go ChatRoomInstance.standaloneHandler(conn, client)
+			}
+			// 消息推送模式连接处理
+		case "listener":
+			if MessagePushInstance.Mode == "cluster" {
+				go MessagePushInstance.clusterHandler(conn, client)
+			} else {
+				go MessagePushInstance.standaloneHandler(conn, client)
+			}
+		}
+	}
+}
+
+func Run(mode string) {
 	go func() {
 		address := strings.Join([]string{Config.Server.HOST, strconv.Itoa(Config.Server.PORT)}, ":")
 		// 启动IM服务端程序
@@ -34,10 +156,10 @@ func Run() {
 		defer listener.Close()
 
 		// 聊天室模式初始化
-		ChatRoomInstance = ChatRoom{Base{make(map[string]Client), make(chan string)}}
+		ChatRoomInstance = ChatRoom{Base{mode, make(map[string]Client), make(chan string)}}
 		// 消息推送模式初始化
-		MessagePushInstance = MessagePush{Base{make(map[string]Client), make(chan string)}}
+		MessagePushInstance = MessagePush{Base{mode, make(map[string]Client), make(chan string)}}
 		// GIM 处理器实例化
-		GIMHandler(listener)
+		GIMHandler(listener, mode)
 	}()
 }

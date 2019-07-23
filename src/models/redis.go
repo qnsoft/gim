@@ -10,6 +10,8 @@ package models
 
 import (
 	"github.com/gomodule/redigo/redis"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,15 +28,16 @@ var Pool *redis.Pool
 
 func init() {
 	Pool = &redis.Pool{
-		MaxIdle:     1,
-		MaxActive:   0,
-		IdleTimeout: 30 * time.Second,
+		MaxIdle:     Config.Redis.MaxIdle,
+		MaxActive:   Config.Redis.MaxActive,
+		IdleTimeout: time.Duration(Config.Redis.IdleTimeout) * time.Second,
+		Wait:        true,
 		Dial: func() (conn redis.Conn, err error) {
-			conn, err = redis.Dial("tcp", "0.0.0.0:6379")
+			conn, err = redis.Dial("tcp", strings.Join([]string{Config.Redis.HOST, strconv.Itoa(Config.Redis.PORT)}, ":"))
 			if err != nil {
 				return nil, err
 			}
-			_, _ = conn.Do("select", 1)
+			_, _ = conn.Do("SELECT", Config.Redis.DB)
 			return conn, nil
 		},
 	}
