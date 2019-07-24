@@ -30,8 +30,6 @@ func Push(ctx *gin.Context) {
 	case "chatroom":
 		switch ChatRoomInstance.Mode {
 		case "cluster":
-			//ids := []string{"001", "002"}
-			//ChatRoomInstance.SaveHistory(ids, params.Msg)
 			if onlineMap, err := ChatRoomInstance.GetOnlineMap(params.AppKey); err != nil {
 				ctx.Status(http.StatusBadRequest)
 			} else {
@@ -44,7 +42,19 @@ func Push(ctx *gin.Context) {
 			ChatRoomInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
 		}
 	case "listener":
-		MessagePushInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
+		switch MessagePushInstance.Mode {
+		case "cluster":
+			if onlineMap, err := MessagePushInstance.GetOnlineMap(params.AppKey); err != nil {
+				ctx.Status(http.StatusBadRequest)
+			} else {
+				for _, unique := range onlineMap {
+					MessagePushInstance.Publish(unique, params.Msg, false)
+				}
+				ctx.Status(http.StatusOK)
+			}
+		default:
+			MessagePushInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
+		}
 	}
 	ctx.Status(http.StatusOK)
 }

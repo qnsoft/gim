@@ -36,6 +36,7 @@ func main() {
 	if help {
 		flag.Usage()
 	} else {
+		// TODO: 模式写配置文件
 		// Start GIM server
 		im.Run(mode)
 		// Start Restful API

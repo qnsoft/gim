@@ -79,7 +79,8 @@ func GIMHandler(listener net.Listener, mode string) {
 		go func() {
 			c := Pool.Get()
 			psc := redis.PubSubConn{Conn: c}
-			_ = psc.Subscribe("public:Broadcast")
+			// TODO: 这里有问题, 公共频道要以客户端模式、appkey 加以区分
+			_ = psc.Subscribe(strings.Join([]string{"public", ChatRoomInstance.Mode, "Broadcast"}, ":"))
 			for {
 				switch v := psc.Receive().(type) {
 				case redis.Message:
@@ -90,8 +91,6 @@ func GIMHandler(listener net.Listener, mode string) {
 					} else {
 						// 向在线用户广播数据
 						for _, unique := range onlineMap {
-							// 保存历史数据
-							//ChatRoomInstance.SaveHistory([]string{unique}, buf[1])
 							// 发往在线用户私人频道
 							ChatRoomInstance.Publish(unique, buf[1], false)
 						}
@@ -103,6 +102,34 @@ func GIMHandler(listener net.Listener, mode string) {
 				}
 			}
 		}()
+
+		// 消息推送模式公共通道监听
+		go func() {
+			c := Pool.Get()
+			psc := redis.PubSubConn{Conn: c}
+			_ = psc.Subscribe(strings.Join([]string{"public", MessagePushInstance.Mode, "Broadcast"}, ":"))
+			for {
+				switch v := psc.Receive().(type) {
+				case redis.Message:
+					buf := strings.Split(string(v.Data), "||")
+					// 获取在线列表
+					if onlineMap, err := MessagePushInstance.GetOnlineMap(buf[0]); err != nil {
+						log.Printf("Get %s:onlineMap failed!\n", buf[0])
+					} else {
+						// 向在线用户广播数据
+						for _, unique := range onlineMap {
+							// 发往在线用户私人频道
+							MessagePushInstance.Publish(unique, buf[1], false)
+						}
+					}
+				case redis.Subscription:
+				case error:
+					log.Printf("Unknown type: %+v, %T", v, v)
+					return
+				}
+			}
+		}()
+
 	default:
 		// 聊天室模式广播通道监听
 		go func() {

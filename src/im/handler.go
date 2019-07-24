@@ -23,7 +23,7 @@ import (
 func (b Base) addOnlineMap(id, appKey string) {
 	c := models.Pool.Get()
 	defer c.Close()
-	_, err := c.Do("SADD", appKey+":onlineMap", id)
+	_, err := c.Do("SADD", strings.Join([]string{appKey, b.Mode, "onlineMap"}, ":"), id)
 	if err != nil {
 		log.Println("SADD failed!", err)
 	}
@@ -33,7 +33,7 @@ func (b Base) addOnlineMap(id, appKey string) {
 func (b Base) delOnlineMap(id, appKey string) {
 	c := models.Pool.Get()
 	defer c.Close()
-	_, err := c.Do("SREM", appKey+":onlineMap", id)
+	_, err := c.Do("SREM", strings.Join([]string{appKey, b.Mode, "onlineMap"}, ":"), id)
 	if err != nil {
 		log.Println("SREM failed!", err)
 	}
@@ -43,25 +43,13 @@ func (b Base) delOnlineMap(id, appKey string) {
 func (b Base) GetOnlineMap(appKey string) ([]string, error) {
 	c := models.Pool.Get()
 	defer c.Close()
-	_ = c.Send("SMEMBERS", appKey+":onlineMap")
+	_ = c.Send("SMEMBERS", strings.Join([]string{appKey, b.Mode, "onlineMap"}, ":"))
 	_ = c.Flush()
 	if reply, err := redis.Strings(c.Receive()); err != nil {
 		log.Println("SMEMBERS failed!", err)
 		return nil, err
 	} else {
 		return reply, nil
-	}
-}
-
-// 集群模式离线消息: 存储
-func (b Base) SaveHistory(ids []string, msg interface{}) {
-	c := models.Pool.Get()
-	defer c.Close()
-	for _, unique := range ids {
-		_ = c.Send("RPUSH", unique, msg)
-	}
-	if err := c.Flush(); err != nil {
-		log.Println("SaveHistory faield!", err)
 	}
 }
 
@@ -72,20 +60,36 @@ func (b Base) Publish(channel, msg string, public bool) {
 	switch public {
 	// 发给公共频道 -> public:Broadcast
 	case true:
-		if _, err := c.Do("PUBLISH", "public:"+channel, msg); err != nil {
+		if _, err := c.Do("PUBLISH", strings.Join([]string{"public", b.Mode, channel}, ":"), msg); err != nil {
 			log.Println("PUBLISH failed", err)
 		}
 	// 发给私有频道 -> appkey:unique
-	default:
-		if _, err := c.Do("PUBLISH", channel, msg); err != nil {
+	case false:
+		if _, err := c.Do("PUBLISH", strings.Join([]string{b.Mode, channel}, ":"), msg); err != nil {
 			log.Println("PUBLISH failed", err)
 		}
 	}
 }
 
-// 集群模式: 频道订阅
-func (b Base) Subscribe() {
-
+// 集群模式: 频道订阅(特指私人频道)
+func (b Base) Subscribe(channel string, conn net.Conn) {
+	c := models.Pool.Get()
+	psc := redis.PubSubConn{Conn: c}
+	_ = psc.Subscribe(strings.Join([]string{b.Mode, channel}, ":"))
+	for {
+		switch v := psc.Receive().(type) {
+		case redis.Message:
+			_, err := conn.Write([]byte(v.Data))
+			if err != nil {
+				log.Println("Send data error: ", err)
+				return
+			}
+		case redis.Subscription:
+		case error:
+			log.Printf("Unknown type: %+v, %T", v, v)
+			return
+		}
+	}
 }
 
 // 基于聊天室的连接处理: Standalone
@@ -201,54 +205,17 @@ func (c ChatRoom) clusterHandler(conn net.Conn, client Client) {
 	// 广播用户上线
 	c.Publish("Broadcast", makePublicMessage(client, "Login"), true)
 
-	// 订阅私人频道, 接收发给自己的数据
-	go func() {
-		c := models.Pool.Get()
-		psc := redis.PubSubConn{Conn: c}
-		_ = psc.Subscribe(unique)
-		for {
-			switch v := psc.Receive().(type) {
-			case redis.Message:
-				_, err := conn.Write([]byte(v.Data))
-				if err != nil {
-					log.Println("Send data error: ", err)
-					return
-				}
-			case redis.Subscription:
-			case error:
-				log.Printf("Unknown type: %+v, %T", v, v)
-				return
-			}
-		}
-	}()
-
-	// 向私人频道发送欢迎语
-	c.Publish(unique, "Welcome to the GIM ChatRoom mode ^_^", false)
-
-	// 集群模式离线消息: 读取
-	go func() {
-		c := models.Pool.Get()
-		defer c.Close()
-		_ = c.Send("LRANGE", unique, 0, -1)
-		_ = c.Flush()
-		for {
-			reply, err := redis.ByteSlices(c.Receive())
-			if err != nil {
-				log.Println("SMEMBERS failed!", err)
-				return
-			}
-			for _, msg := range reply {
-				if _, err = conn.Write(msg); err != nil {
-					log.Println("Send data error: ", err)
-					return
-				}
-			}
-		}
-	}()
+	// 订阅私人频道
+	go c.Subscribe(unique, conn)
+	// 发送欢迎语
+	if _, err := conn.Write([]byte("Welcome to the GIM ChatRoom mode ^_^")); err != nil {
+		log.Println("Send welcome failed!", err)
+		return
+	}
 
 	// 接收当前用户输入数据
 	go func() {
-		buf := make([]byte, 2*1024)
+		buf := make([]byte, 1024)
 		for {
 			n, err := conn.Read(buf)
 			if err != nil {
@@ -294,29 +261,13 @@ func (m MessagePush) clusterHandler(conn net.Conn, client Client) {
 	unique := strings.Join([]string{client.AppKey, client.Id}, ":")
 	m.addOnlineMap(unique, client.AppKey)
 
-	// 订阅私人频道, 接收发给自己的数据
-	go func() {
-		c := models.Pool.Get()
-		psc := redis.PubSubConn{Conn: c}
-		_ = psc.Subscribe(unique)
-		for {
-			switch v := psc.Receive().(type) {
-			case redis.Message:
-				_, err := conn.Write([]byte(v.Data))
-				if err != nil {
-					log.Println("Send data error: ", err)
-					return
-				}
-			case redis.Subscription:
-			case error:
-				log.Printf("Unknown type: %+v, %T", v, v)
-				return
-			}
-		}
-	}()
-
-	// 向当前用户发送欢迎语
-	m.Publish(unique, "Welcome to the GIM MessagePush mode ^_^", false)
+	// 订阅私人频道
+	go m.Subscribe(unique, conn)
+	// 发送欢迎语
+	if _, err := conn.Write([]byte("Welcome to the GIM MessagePush mode ^_^")); err != nil {
+		log.Println("Send welcome failed!", err)
+		return
+	}
 
 	// 连接超时退出
 	for {
