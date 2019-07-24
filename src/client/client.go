@@ -21,6 +21,7 @@ var (
 	help     bool
 	host     string
 	port     int
+	appkey   string
 	id       string
 	name     string
 	city     string
@@ -32,10 +33,11 @@ var (
 )
 
 type Client struct {
-	Id   string
-	Name string
-	City string
-	Mode string
+	AppKey string
+	Id     string
+	Name   string
+	City   string
+	Mode   string
 }
 
 type Callback func(conn net.Conn, client Client)
@@ -65,7 +67,9 @@ func ChatRoom(conn net.Conn, client Client) {
 	online, closed := make(chan bool), make(chan bool)
 
 	// 发送基础数据
-	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s|%s", client.Id, client.Name, client.City, client.Mode)))
+	_, err := conn.Write([]byte(
+		fmt.Sprintf("PROFILE:%s|%s|%s|%s|%s", client.AppKey, client.Id, client.Name, client.City, client.Mode),
+	))
 	if err != nil {
 		log.Println("Send profile failed: ", err)
 	}
@@ -117,7 +121,9 @@ func Listener(conn net.Conn, client Client) {
 	defer conn.Close()
 
 	// 发送基础数据
-	_, err := conn.Write([]byte(fmt.Sprintf("PROFILE:%s|%s|%s|%s", client.Id, client.Name, client.City, client.Mode)))
+	_, err := conn.Write([]byte(
+		fmt.Sprintf("PROFILE:%s|%s|%s|%s|%s", client.AppKey, client.Id, client.Name, client.City, client.Mode),
+	))
 	if err != nil {
 		log.Println("Send profile failed: ", err)
 		return
@@ -139,6 +145,7 @@ func main() {
 	flag.BoolVar(&help, "help", false, "")
 	flag.StringVar(&host, "host", "127.0.0.1", "GIM server address")
 	flag.IntVar(&port, "port", 8088, "GIM server listener port")
+	flag.StringVar(&appkey, "appkey", "", "AppKey")
 	flag.StringVar(&id, "id", "0827", "Client unique id")
 	flag.StringVar(&name, "name", "guest", "Client name")
 	flag.StringVar(&city, "city", "BJ", "Client city name")
@@ -153,7 +160,7 @@ func main() {
 		flag.Usage()
 	} else {
 		// 客户端实例化
-		client := Client{id, name, city, mode}
+		client := Client{appkey, id, name, city, mode}
 		// 模式判断
 		switch mode {
 		case "chatroom":

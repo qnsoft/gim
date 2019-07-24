@@ -16,8 +16,9 @@ import (
 )
 
 type Params struct {
-	Mode string `form:"mode" json:"mode" binding:"required"`
-	Msg  string `form:"msg" json:"msg" binding:"required"`
+	AppKey string `form:"appkey" json:"app_key" binding:"required"`
+	Mode   string `form:"mode" json:"mode" binding:"required"`
+	Msg    string `form:"msg" json:"msg" binding:"required"`
 }
 
 func Push(ctx *gin.Context) {
@@ -27,7 +28,21 @@ func Push(ctx *gin.Context) {
 	}
 	switch params.Mode {
 	case "chatroom":
-		ChatRoomInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
+		switch ChatRoomInstance.Mode {
+		case "cluster":
+			//ids := []string{"001", "002"}
+			//ChatRoomInstance.SaveHistory(ids, params.Msg)
+			if onlineMap, err := ChatRoomInstance.GetOnlineMap(params.AppKey); err != nil {
+				ctx.Status(http.StatusBadRequest)
+			} else {
+				for _, unique := range onlineMap {
+					ChatRoomInstance.Publish(unique, params.Msg, false)
+				}
+				ctx.Status(http.StatusOK)
+			}
+		default:
+			ChatRoomInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
+		}
 	case "listener":
 		MessagePushInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
 	}

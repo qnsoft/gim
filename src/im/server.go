@@ -20,12 +20,13 @@ import (
 
 // 客户端
 type Client struct {
-	Id   string      // 客户端唯一ID, 由客户端维护该字段的唯一性
-	Name string      // 客户端名称
-	City string      // 城市
-	Addr string      // 客户端地址
-	Mode string      // 客户端模式
-	C    chan string // 单播, 仅自己可见
+	AppKey string      // 认证标识
+	Id     string      // 客户端唯一ID, 由客户端维护该字段的唯一性
+	Name   string      // 客户端名称
+	City   string      // 城市
+	Addr   string      // 客户端地址
+	Mode   string      // 客户端模式
+	C      chan string // 单播, 仅自己可见
 }
 
 // 基础数据结构
@@ -50,26 +51,51 @@ var (
 	MessagePushInstance MessagePush
 )
 
-// 消息格式化
-func makeMessage(client Client, msg string) (message string) {
-	message = fmt.Sprintf("[ %s:%s ] -> %s\n", client.Id, client.Name, msg)
+// 根据用户资料生成唯一ID
+func (c Client) makeUniqueID() (unique string) {
+	unique = strings.Join([]string{c.AppKey, c.Id}, ":")
+	return
+}
+
+// 消息格式化: 公共广播
+func makePublicMessage(client Client, msg string) (message string) {
+	message = fmt.Sprintf("%s||[%s:%s] -> %s\n", client.AppKey, client.Id, client.Name, msg)
+	return
+}
+
+// 消息格式化: 私有广播
+func makePrivateMessage(client Client, msg string) (message string) {
+	message = fmt.Sprintf("[%s:%s] -> %s\n", client.Id, client.Name, msg)
 	return
 }
 
 // GIM 处理器
 func GIMHandler(listener net.Listener, mode string) {
+	// 监听公共广播频道, 解析数据处理
 	switch mode {
+	// 集群方式
 	case "cluster":
+		// 聊天室模式
 		go func() {
 			c := Pool.Get()
 			psc := redis.PubSubConn{Conn: c}
-			_ = psc.Subscribe("appkey:Broadcast")
+			_ = psc.Subscribe("public:Broadcast")
 			for {
 				switch v := psc.Receive().(type) {
 				case redis.Message:
-					ChatRoomInstance.getOnlineMap()
-					//ChatRoomInstance.Publish("")
-					log.Println(string(v.Data))
+					buf := strings.Split(string(v.Data), "||")
+					// 获取在线列表
+					if onlineMap, err := ChatRoomInstance.GetOnlineMap(buf[0]); err != nil {
+						log.Printf("Get %s:onlineMap failed!\n", buf[0])
+					} else {
+						// 向在线用户广播数据
+						for _, unique := range onlineMap {
+							// 保存历史数据
+							//ChatRoomInstance.SaveHistory([]string{unique}, buf[1])
+							// 发往在线用户私人频道
+							ChatRoomInstance.Publish(unique, buf[1], false)
+						}
+					}
 				case redis.Subscription:
 				case error:
 					log.Printf("Unknown type: %+v, %T", v, v)
@@ -118,7 +144,8 @@ func GIMHandler(listener net.Listener, mode string) {
 					profile := strings.Split(string(buf[:n]), ":")[1]
 					body := strings.Split(strings.ToLower(profile), "|")
 					client = Client{
-						body[0], body[1], body[2], conn.RemoteAddr().String(), body[3], make(chan string),
+						body[0], body[1], body[2], body[3],
+						conn.RemoteAddr().String(), body[4], make(chan string),
 					}
 				}
 				break
