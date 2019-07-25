@@ -1,19 +1,29 @@
-FROM golang:latest as base
+# 多阶段构建, 基础镜像用来编译源代码
+FROM golang:stretch as base
 
-ENV GO111MODULE=on GOPROXY="https://goproxy.io"
+MAINTAINER WangXiaoQing "https://github.com/wangxiaoqiange"
+
+ENV CGO_ENABLED=0 GOOS=linux GO111MODULE=on GOPROXY="https://goproxy.io"
 
 WORKDIR /go/gim
+COPY . .
+RUN go build -a -installsuffix cgo -o app src/main.go
 
-COPY build .
-
-RUN go build -o Gim src/main.go
-
+# release
 FROM alpine:latest
+MAINTAINER WangXiaoQing "https://github.com/wangxiaoqiange"
 
-WORKDIR /
+RUN mkdir -p /code/src
 
-COPY --from=base /go/gim/Gim .
+WORKDIR /code
+COPY --from=base /go/gim/app .
+COPY --from=base /go/gim/src/config.json ./src
 
-RUN chmod +x Gim
+# 存放 config.json
+VOLUME /src
 
-ENTRYPOINT ["/Gim"]
+EXPOSE 8080
+EXPOSE 8081
+EXPOSE 8082
+
+CMD ["./app"]
