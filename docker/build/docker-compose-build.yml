@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+  gim:
+    build:
+      context: ../..
+      dockerfile: ../Dockerfile
+    image: "gim-golang"
+#    tty: true
+    volumes:
+      - ./../release:/go/gim/release
+#    command: ls && go build -o Gim src/main.go && mkdir /release && cp Gim /release

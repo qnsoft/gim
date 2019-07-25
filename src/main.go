@@ -10,7 +10,6 @@ package main
 
 import (
 	"flag"
-	. "gim/src/models"
 	. "gim/src/routers"
 	_ "gim/src/services"
 	"log"
@@ -29,7 +28,7 @@ func main() {
 
 	_ = os.Setenv("PORT", post)
 
-	Config.Print()
+	// Config.Print()
 
 	if help {
 		flag.Usage()

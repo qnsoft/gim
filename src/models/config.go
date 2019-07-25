@@ -55,7 +55,7 @@ func (c Conf) Print() {
 
 // 加载配置文件
 func init() {
-	buf, err := ioutil.ReadFile("src/config/config.json")
+	buf, err := ioutil.ReadFile("src/config.json")
 	if err != nil {
 		log.Fatalf("Unable to load configuration file: %v", err)
 	}
