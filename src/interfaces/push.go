@@ -9,52 +9,51 @@
 package interfaces
 
 import (
-	"fmt"
-	. "gim/src/im"
+	. "gim/src/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
 
-type Params struct {
-	AppKey string `form:"appkey" json:"app_key" binding:"required"`
-	Mode   string `form:"mode" json:"mode" binding:"required"`
-	Msg    string `form:"msg" json:"msg" binding:"required"`
+type PushParams struct {
+	AppKey  string `form:"appkey" json:"appkey" binding:"required"`
+	Mode    string `form:"mode" json:"mode" binding:"required"`
+	Message string `form:"message" json:"message" binding:"required"`
 }
 
 func Push(ctx *gin.Context) {
-	var params Params
+	var params PushParams
 	if err := ctx.Bind(&params); err != nil {
-		ctx.Status(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "Parameter error",
+		})
 	}
 	switch params.Mode {
-	case "chatroom":
-		switch ChatRoomInstance.Mode {
-		case "cluster":
-			if onlineMap, err := ChatRoomInstance.GetOnlineMap(params.AppKey); err != nil {
-				ctx.Status(http.StatusBadRequest)
-			} else {
-				for _, unique := range onlineMap {
-					ChatRoomInstance.Publish(unique, params.Msg, false)
-				}
-				ctx.Status(http.StatusOK)
+	case "im":
+		if onlineMap, err := ChatRoomInstance.GetOnlineMap(params.AppKey); err != nil {
+			ctx.Status(http.StatusBadRequest)
+		} else {
+			// 消息将推送至在线用户私人频道
+			for _, unique := range onlineMap {
+				privateChannel := strings.Join([]string{ChatRoomInstance.ServiceName, unique}, ":")
+				ChatRoomInstance.Publish(privateChannel, params.Message, false)
 			}
-		default:
-			ChatRoomInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
+			ctx.Status(http.StatusOK)
 		}
-	case "listener":
-		switch MessagePushInstance.Mode {
-		case "cluster":
-			if onlineMap, err := MessagePushInstance.GetOnlineMap(params.AppKey); err != nil {
-				ctx.Status(http.StatusBadRequest)
-			} else {
-				for _, unique := range onlineMap {
-					MessagePushInstance.Publish(unique, params.Msg, false)
-				}
-				ctx.Status(http.StatusOK)
+	case "push":
+		if onlineMap, err := MessagePushInstance.GetOnlineMap(params.AppKey); err != nil {
+			ctx.Status(http.StatusBadRequest)
+		} else {
+			// 消息将推送至在线用户私人频道
+			for _, unique := range onlineMap {
+				privateChannel := strings.Join([]string{MessagePushInstance.ServiceName, unique}, ":")
+				MessagePushInstance.Publish(privateChannel, params.Message, false)
 			}
-		default:
-			MessagePushInstance.Broadcast <- fmt.Sprintf("[ Game ] -> %s", params.Msg)
+			ctx.Status(http.StatusOK)
 		}
+	default:
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "No matching pattern for mode: " + params.Mode,
+		})
 	}
-	ctx.Status(http.StatusOK)
 }

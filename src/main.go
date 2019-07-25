@@ -10,9 +10,9 @@ package main
 
 import (
 	"flag"
-	"gim/src/im"
 	. "gim/src/models"
 	. "gim/src/routers"
+	_ "gim/src/services"
 	"log"
 	"os"
 )
@@ -20,13 +20,11 @@ import (
 var (
 	help bool
 	post string
-	mode string
 )
 
 func main() {
 	flag.BoolVar(&help, "help", false, "")
 	flag.StringVar(&post, "port", "8080", "GIM restful api port")
-	flag.StringVar(&mode, "mode", "cluster", "Start mode: [standalong, cluster]")
 	flag.Parse()
 
 	_ = os.Setenv("PORT", post)
@@ -36,9 +34,6 @@ func main() {
 	if help {
 		flag.Usage()
 	} else {
-		// TODO: 模式写配置文件
-		// Start GIM server
-		im.Run(mode)
 		// Start Restful API
 		if err := App.Run(); err != nil {
 			log.Fatalln("Service startup failed !", err)

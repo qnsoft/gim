@@ -16,16 +16,32 @@ import (
 
 var Config Conf
 
-// IM Server
-type Server struct {
+// Default
+type Public struct {
 	HOST string `json:"host"`
 	PORT int    `json:"port"`
 }
 
+// IM Server
+type Im struct {
+	Public `json:"im"`
+}
+
+// Push Server
+type Push struct {
+	Public `json:"push"`
+}
+
+// Services
+type Services struct {
+	Im
+	Push
+}
+
 // 配置文件结构体
 type Conf struct {
-	Server Server
-	Redis  Redis
+	Redis    Redis
+	Services Services
 }
 
 // 自定义json格式化打印方法
