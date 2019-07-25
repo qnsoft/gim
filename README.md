@@ -3,7 +3,7 @@ Gim 是一款高性能的即时通讯系统，它使用 Go（golang） 开发完
 
 ## 核心逻辑
 
-![image](https://github.com/wangxiaoqiange/gim/blob/develop/gim.png)
+![image](https://www.processon.com/view/link/5d3947e0e4b092b334688d4b)
 
 ## 功能列表
 
