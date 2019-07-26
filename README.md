@@ -1,11 +1,25 @@
+<div align="center">
+  <h1 style="border-bottom: 0px;">
+    <a href='https://github.com/wangxiaoqiange/gim'>GIM</a>
+  </h1>
+  <p>一款高性能的即时通讯系统，它使用 Go（golang） 开发完成。</p>
+</div>
 
-## GIM
-
-一款高性能的即时通讯系统，它使用 Go（golang） 开发完成。
+<p align="center">
+    <a>
+        <img src="https://img.shields.io/badge/go-1.12-%237fd5ea"/>
+    </a>
+    <a href="https://travis-ci.com/wangxiaoqiange/gim">
+        <img src="https://travis-ci.com/wangxiaoqiange/gim.svg?branch=master"/>
+    </a>
+    <a href="https://github.com/wangxiaoqiange/gim/blob/master/LICENSE">
+        <img alt="GitHub" src="https://img.shields.io/github/license/wangxiaoqiange/gim">
+    </a>
+</p>
 
 ## 核心逻辑
 
-![image](https://github.com/wangxiaoqiange/gim/blob/develop/gim.png)
+![image](gim.png)
 
 ## 功能列表
 
