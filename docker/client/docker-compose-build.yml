@@ -1,0 +1,8 @@
+version: "3.7"
+
+services:
+  gim:
+    build:
+      context: ../..
+      dockerfile: ./docker/client/Dockerfile
+    image: "wangxiaoqiang/gim-client:${VER_TAG:-latest}"

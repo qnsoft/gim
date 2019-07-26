@@ -3,6 +3,6 @@ version: "3.7"
 services:
   gim:
     build:
-      context: ..
-      dockerfile: ./docker/Dockerfile
+      context: ../..
+      dockerfile: ./docker/server/Dockerfile
     image: "wangxiaoqiang/gim:${VER_TAG:-latest}"

@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   gim:
-    image: wangxiaoqiang/gim:0.0.1
+    image: "wangxiaoqiang/gim:${VER_TAG:-latest}"
     container_name: gim
     restart: always
     volumes:

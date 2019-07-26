@@ -10,11 +10,11 @@
     }
   },
   "redis": {
-    "host": "192.168.10.102",
+    "host": "192.168.10.23",
     "port": 6379,
     "db": 10,
     "max_idle": 10,
     "max_active": 0,
-    "idle_timeout": 1
+    "idle_timeout": 300
   }
 }

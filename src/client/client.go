@@ -143,8 +143,8 @@ func Push(conn net.Conn) {
 func main() {
 	flag.BoolVar(&help, "help", false, "")
 	flag.StringVar(&host, "host", "127.0.0.1", "GIM server address")
-	flag.IntVar(&port, "port", 8081, "GIM server listener port")
-	flag.StringVar(&appkey, "appkey", "", "AppKey")
+	flag.IntVar(&port, "port", 8081, "GIM server port")
+	flag.StringVar(&appkey, "appkey", "test", "AppKey")
 	flag.StringVar(&id, "id", "0827", "Client unique id")
 	flag.StringVar(&name, "name", "guest", "Client name")
 	flag.StringVar(&city, "city", "BJ", "Client city name")

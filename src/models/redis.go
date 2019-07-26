@@ -41,4 +41,8 @@ func init() {
 			return conn, nil
 		},
 	}
+
+	// 首次启动清空仓库
+	c := Pool.Get()
+	_, _ = c.Do("FLUSHDB")
 }
