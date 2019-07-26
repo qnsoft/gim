@@ -1,9 +1,6 @@
-<div align="center">
-  <h1><a href='https://github.com/wangxiaoqiange/gim'>GIM</a></h1>
-
-  <a>
-      <img src="https://img.shields.io/badge/go-1.12-%237fd5ea"/>
-  </a>
+# GIM
+<div >
+  <a><img src="https://img.shields.io/badge/go-1.12-%237fd5ea"/></a>
   <a href="https://travis-ci.com/wangxiaoqiange/gim">
       <img src="https://travis-ci.com/wangxiaoqiange/gim.svg?branch=master"/>
   </a>
