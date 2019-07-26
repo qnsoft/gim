@@ -1,0 +1,12 @@
+language: go
+
+go:
+  - 1.x
+  - "1.10"
+  - 1.11.x
+
+install:
+  - echo "install"
+
+script:
+  - go build src/main.go
