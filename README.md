@@ -1,19 +1,18 @@
 <div align="center">
-  <h1 style="border-bottom: 0px;">
-    <a href='https://github.com/wangxiaoqiange/gim'>GIM</a>
-  </h1>
-    <a>
+  <h1><a href='https://github.com/wangxiaoqiange/gim'>GIM</a></h1>
+
+  <a>
       <img src="https://img.shields.io/badge/go-1.12-%237fd5ea"/>
-    </a>
-    <a href="https://travis-ci.com/wangxiaoqiange/gim">
+  </a>
+  <a href="https://travis-ci.com/wangxiaoqiange/gim">
       <img src="https://travis-ci.com/wangxiaoqiange/gim.svg?branch=master"/>
-    </a>
-    <a href="https://github.com/wangxiaoqiange/gim/blob/master/LICENSE">
+  </a>
+  <a href="https://github.com/wangxiaoqiange/gim/blob/master/LICENSE">
       <img alt="GitHub" src="https://img.shields.io/github/license/wangxiaoqiange/gim">
-    </a>
+  </a>
 </div>
 
-一款高性能的即时通讯系统，它使用 Go（golang） 开发完成。
+<p>一款高性能的即时通讯系统，它使用 Go（golang） 开发完成。</p>
 
 ## 核心逻辑
 
