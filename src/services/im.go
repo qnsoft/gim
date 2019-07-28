@@ -66,6 +66,7 @@ func ChatRoomHandler(listener net.Listener) {
 				if strings.HasPrefix(string(buf[:n]), "PROFILE:") {
 					profile := strings.Split(string(buf[:n]), ":")[1]
 					body := strings.Split(strings.ToLower(profile), "|")
+					// BUG: 必须验证 appkey
 					client = Client{
 						body[0], body[1], body[2], body[3], conn.RemoteAddr().String(),
 					}
