@@ -2,8 +2,8 @@ version: "3.7"
 
 services:
   gim:
-    image: "wangxiaoqiang/gim:${VER_TAG:-latest}"
-    container_name: gim
+    image: "wangxiaoqiang/server:${VER_TAG:-latest}"
+    container_name: server
     restart: always
     volumes:
       - ../src/config.json:/code/src/config.json

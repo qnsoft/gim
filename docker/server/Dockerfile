@@ -1,4 +1,4 @@
-# 多阶段构建, 基础镜像用来编译源代码
+# 二进制文件编译
 FROM golang:stretch as base
 
 MAINTAINER WangXiaoQing "https://github.com/wangxiaoqiange"
@@ -9,7 +9,7 @@ WORKDIR /go/gim
 COPY . .
 RUN go build -a -installsuffix cgo -o app src/main.go
 
-# release
+# 编译体积更小的分发版本
 FROM alpine:latest
 MAINTAINER WangXiaoQing "https://github.com/wangxiaoqiange"
 
@@ -19,7 +19,7 @@ WORKDIR /code
 COPY --from=base /go/gim/app .
 COPY --from=base /go/gim/src/config.json ./src
 
-# 存放 config.json
+# Store config.json
 VOLUME /src
 
 EXPOSE 8080

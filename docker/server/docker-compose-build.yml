@@ -4,5 +4,5 @@ services:
   gim:
     build:
       context: ../..
-      dockerfile: ./docker/server/Dockerfile
-    image: "wangxiaoqiang/gim:${VER_TAG:-latest}"
+      dockerfile: Dockerfile
+    image: "wangxiaoqiang/server:${VER_TAG:-latest}"

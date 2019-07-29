@@ -2,7 +2,7 @@
 @ Author:       Wang XiaoQiang
 @ Github:       https://github.com/wangxiaoqiange
 @ File:         config.go
-@ Create Time:  2019-07-22 18:46
+@ Create Time:  2019-07-29 14:55
 @ Software:     GoLand
 */
 
@@ -23,7 +23,7 @@ type Public struct {
 }
 
 // IM Server
-type Im struct {
+type IM struct {
 	Public `json:"im"`
 }
 
@@ -34,33 +34,32 @@ type Push struct {
 
 // Services
 type Services struct {
-	Im
+	IM
 	Push
 }
 
-// 配置文件结构体
+// config struct
 type Conf struct {
 	Redis    Redis
 	Services Services
 }
 
-// 自定义json格式化打印方法
+// Json formatted printing method
 func (c Conf) Print() {
-	buf, err := json.MarshalIndent(c, "", "\t")
-	if err != nil {
-		log.Println("Error: ", err)
+	if buf, err := json.MarshalIndent(c, "", "\t"); err != nil {
+		log.Println("Json format error: ", err)
+	} else {
+		log.Println(string(buf))
 	}
-	log.Println(string(buf))
 }
 
-// 加载配置文件
+// loading config
 func init() {
-	buf, err := ioutil.ReadFile("src/config.json")
-	if err != nil {
+	if buf, err := ioutil.ReadFile("app/server/configs/config.json"); err != nil {
 		log.Fatalf("Unable to load configuration file: %v", err)
-	}
-	err = json.Unmarshal(buf, &Config)
-	if err != nil {
-		log.Fatalf("Configuration file format error: %v", err)
+	} else {
+		if err = json.Unmarshal(buf, &Config); err != nil {
+			log.Fatalf("Configuration file format error: %v", err)
+		}
 	}
 }

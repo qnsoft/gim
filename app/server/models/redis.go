@@ -2,7 +2,7 @@
 @ Author:       Wang XiaoQiang
 @ Github:       https://github.com/wangxiaoqiange
 @ File:         redis.go
-@ Create Time:  2019-07-22 15:39
+@ Create Time:  2019-07-29 15:08
 @ Software:     GoLand
 */
 
@@ -41,8 +41,4 @@ func init() {
 			return conn, nil
 		},
 	}
-
-	// 首次启动清空仓库
-	c := Pool.Get()
-	_, _ = c.Do("FLUSHDB")
 }
