@@ -10,6 +10,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"gim/app/server/models"
 	"github.com/gomodule/redigo/redis"
 	"io"
@@ -18,6 +19,9 @@ import (
 	"strings"
 	"time"
 )
+
+// 定义全局在线列表内结构
+var onlineMap = make(map[string]Client)
 
 type Client struct {
 	AppKey string      `json:"app_key" binding:"required"` // 认证标识
@@ -29,16 +33,17 @@ type Client struct {
 }
 
 type PublicMessage struct {
-	AppKey  string `json:"app_key"`
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Content string `json:"content"`
+	AppKey   string `json:"app_key"`
+	From     string `json:"from"`
+	FormName string `json:"form_name"`
+	To       string `json:"to"`
+	Content  string `json:"content"`
 }
 
 // 基础数据结构
 type Base struct {
-	ServiceName string            //服务名称
-	OnlineMap   map[string]Client // 客户端在线列表
+	ServiceName string                       //服务名称
+	OnlineMap   map[string]map[string]Client // 客户端在线列表
 }
 
 // 聊天室模式
@@ -85,7 +90,7 @@ func (b Base) GetOnlineMap(appKey string) ([]string, error) {
 
 // 公共频道消息格式化
 func PublicMessageBuilder(c Client, msg string) string {
-	buf, _ := json.Marshal(PublicMessage{c.AppKey, c.Id, "all", msg})
+	buf, _ := json.Marshal(PublicMessage{c.AppKey, c.Id, c.Name, "all", msg})
 	return string(buf)
 }
 
@@ -98,6 +103,33 @@ func (b Base) Publish(msg string) {
 	}
 }
 
+// 频道订阅
+func (b Base) Subscribe() {
+	c := models.Pool.Get()
+	defer c.Close()
+	psc := redis.PubSubConn{Conn: c}
+	_ = psc.Subscribe(strings.Join([]string{b.ServiceName, "Broadcast"}, ":"))
+	for {
+		switch v := psc.Receive().(type) {
+		case redis.Message:
+			var msg PublicMessage
+			if err := json.Unmarshal(v.Data, &msg); err != nil {
+				log.Println("Json Unmarshal failed", err)
+				continue
+			}
+
+			// 消息转发
+			for _, obj := range b.OnlineMap[msg.AppKey] {
+				obj.C <- fmt.Sprintf("[%s:%s] -> %s", msg.From, msg.FormName, msg.Content)
+			}
+		case redis.Subscription:
+		case error:
+			log.Printf("Unknown type, %T, %+v\n", v, v)
+			return
+		}
+	}
+}
+
 // 基于聊天室的连接处理
 func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 	defer conn.Close()
@@ -105,11 +137,9 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 	online, offline := make(chan bool), make(chan bool)
 
 	// 加入在线队列
-	c.OnlineMap[client.Id] = client
+	onlineMap[client.Id] = client
+	c.OnlineMap[client.AppKey] = onlineMap
 	c.addOnlineMap(client.Id, client.AppKey)
-
-	// 广播用户上线
-	c.Publish(PublicMessageBuilder(client, "Login"))
 
 	// 监听私人频道
 	go func() {
@@ -120,6 +150,9 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 			}
 		}
 	}()
+
+	// 广播用户上线
+	c.Publish(PublicMessageBuilder(client, "Login"))
 
 	// 发送欢迎语
 	client.C <- "Welcome to the GIM ChatRoom mode ^_^"
@@ -138,6 +171,7 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 				return
 			} else {
 				// 广播用户数据
+				fmt.Println(string(buf[:n]))
 				c.Publish(PublicMessageBuilder(client, string(buf[:n])))
 				online <- true
 			}
@@ -149,13 +183,13 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 		case <-online:
 		// 主动断开
 		case <-offline:
-			delete(c.OnlineMap, client.Id)
+			delete(c.OnlineMap[client.AppKey], client.Id)
 			c.delOnlineMap(client.Id, client.AppKey)
 			c.Publish(PublicMessageBuilder(client, "Signout"))
 			return
 		// 超时退出
 		case <-time.After(360 * time.Second):
-			delete(c.OnlineMap, client.Id)
+			delete(c.OnlineMap[client.AppKey], client.Id)
 			c.delOnlineMap(client.Id, client.AppKey)
 			c.Publish(PublicMessageBuilder(client, "Timeout"))
 			return
@@ -170,7 +204,8 @@ func (m MessagePush) HandleConnection(conn net.Conn, client Client) {
 	online, offline := make(chan bool), make(chan bool)
 
 	// 加入在线队列
-	m.OnlineMap[client.Id] = client
+	onlineMap[client.Id] = client
+	m.OnlineMap[client.AppKey] = onlineMap
 	m.addOnlineMap(client.Id, client.AppKey)
 
 	// 监听私人频道
@@ -191,12 +226,12 @@ func (m MessagePush) HandleConnection(conn net.Conn, client Client) {
 		case <-online:
 		// 主动断开
 		case <-offline:
-			delete(m.OnlineMap, client.Id)
+			delete(m.OnlineMap[client.AppKey], client.Id)
 			m.delOnlineMap(client.Id, client.AppKey)
 			return
 		// 超时退出
 		case <-time.After(360 * time.Second):
-			delete(m.OnlineMap, client.Id)
+			delete(m.OnlineMap[client.AppKey], client.Id)
 			m.delOnlineMap(client.Id, client.AppKey)
 			return
 		}
