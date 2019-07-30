@@ -109,6 +109,7 @@ func (b Base) Subscribe() {
 	defer c.Close()
 	psc := redis.PubSubConn{Conn: c}
 	_ = psc.Subscribe(strings.Join([]string{b.ServiceName, "Broadcast"}, ":"))
+	fmt.Println(b.ServiceName)
 	for {
 		switch v := psc.Receive().(type) {
 		case redis.Message:
