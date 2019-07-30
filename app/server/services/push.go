@@ -21,7 +21,6 @@ var MessagePushInstance MessagePush
 
 func PushHandler(listener net.Listener) {
 	// 监听公共消息队列
-	// BUG: 数据混乱
 	go MessagePushInstance.Subscribe()
 
 	// 监听请求连接
@@ -72,7 +71,7 @@ func init() {
 		defer listener.Close()
 
 		// 初始化消息推送
-		MessagePushInstance = MessagePush{Base{"push", make(map[string]map[string]Client)}}
+		MessagePushInstance = MessagePush{Base{"push", make(map[string]Client)}}
 		PushHandler(listener)
 	}()
 }

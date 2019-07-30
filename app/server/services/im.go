@@ -21,7 +21,6 @@ var ChatRoomInstance ChatRoom
 
 func ChatRoomHandler(listener net.Listener) {
 	// 监听公共消息队列
-	// BUG: 数据混乱
 	go ChatRoomInstance.Subscribe()
 
 	// 监听请求连接
@@ -72,7 +71,7 @@ func init() {
 		defer listener.Close()
 
 		// 初始化聊天室
-		ChatRoomInstance = ChatRoom{Base{"im", make(map[string]map[string]Client)}}
+		ChatRoomInstance = ChatRoom{Base{"im", make(map[string]Client)}}
 		ChatRoomHandler(listener)
 	}()
 }

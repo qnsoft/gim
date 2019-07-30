@@ -20,9 +20,6 @@ import (
 	"time"
 )
 
-// 定义全局在线列表内结构
-var onlineMap = make(map[string]Client)
-
 type Client struct {
 	AppKey string      `json:"app_key" binding:"required"` // 认证标识
 	Id     string      `json:"id" binding:"required"`      // 客户端唯一ID, 由客户端维护该字段的唯一性
@@ -42,8 +39,8 @@ type PublicMessage struct {
 
 // 基础数据结构
 type Base struct {
-	ServiceName string                       //服务名称
-	OnlineMap   map[string]map[string]Client // 客户端在线列表
+	ServiceName string            //服务名称
+	OnlineMap   map[string]Client // 客户端在线列表, e.g. {"id": client object}
 }
 
 // 聊天室模式
@@ -89,7 +86,7 @@ func (b Base) GetOnlineMap(appKey string) ([]string, error) {
 }
 
 // 公共频道消息格式化
-func PublicMessageBuilder(c Client, msg string) string {
+func PublicMessageBuilder(msg string, c Client) string {
 	buf, _ := json.Marshal(PublicMessage{c.AppKey, c.Id, c.Name, "all", msg})
 	return string(buf)
 }
@@ -109,7 +106,6 @@ func (b Base) Subscribe() {
 	defer c.Close()
 	psc := redis.PubSubConn{Conn: c}
 	_ = psc.Subscribe(strings.Join([]string{b.ServiceName, "Broadcast"}, ":"))
-	fmt.Println(b.ServiceName)
 	for {
 		switch v := psc.Receive().(type) {
 		case redis.Message:
@@ -120,8 +116,10 @@ func (b Base) Subscribe() {
 			}
 
 			// 消息转发
-			for _, obj := range b.OnlineMap[msg.AppKey] {
-				obj.C <- fmt.Sprintf("[%s:%s] -> %s", msg.From, msg.FormName, msg.Content)
+			for _, obj := range b.OnlineMap {
+				if msg.AppKey == obj.AppKey {
+					obj.C <- fmt.Sprintf("[%s:%s] -> %s", msg.From, msg.FormName, msg.Content)
+				}
 			}
 		case redis.Subscription:
 		case error:
@@ -138,8 +136,7 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 	online, offline := make(chan bool), make(chan bool)
 
 	// 加入在线队列
-	onlineMap[client.Id] = client
-	c.OnlineMap[client.AppKey] = onlineMap
+	c.OnlineMap[client.Id] = client
 	c.addOnlineMap(client.Id, client.AppKey)
 
 	// 监听私人频道
@@ -153,7 +150,7 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 	}()
 
 	// 广播用户上线
-	c.Publish(PublicMessageBuilder(client, "Login"))
+	c.Publish(PublicMessageBuilder("Login", client))
 
 	// 发送欢迎语
 	client.C <- "Welcome to the GIM ChatRoom mode ^_^"
@@ -172,8 +169,7 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 				return
 			} else {
 				// 广播用户数据
-				fmt.Println(string(buf[:n]))
-				c.Publish(PublicMessageBuilder(client, string(buf[:n])))
+				c.Publish(PublicMessageBuilder(string(buf[:n]), client))
 				online <- true
 			}
 		}
@@ -184,15 +180,15 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 		case <-online:
 		// 主动断开
 		case <-offline:
-			delete(c.OnlineMap[client.AppKey], client.Id)
+			delete(c.OnlineMap, client.Id)
 			c.delOnlineMap(client.Id, client.AppKey)
-			c.Publish(PublicMessageBuilder(client, "Signout"))
+			c.Publish(PublicMessageBuilder("Signout", client))
 			return
 		// 超时退出
 		case <-time.After(360 * time.Second):
-			delete(c.OnlineMap[client.AppKey], client.Id)
+			delete(c.OnlineMap, client.Id)
 			c.delOnlineMap(client.Id, client.AppKey)
-			c.Publish(PublicMessageBuilder(client, "Timeout"))
+			c.Publish(PublicMessageBuilder("Timeout", client))
 			return
 		}
 	}
@@ -205,8 +201,7 @@ func (m MessagePush) HandleConnection(conn net.Conn, client Client) {
 	online, offline := make(chan bool), make(chan bool)
 
 	// 加入在线队列
-	onlineMap[client.Id] = client
-	m.OnlineMap[client.AppKey] = onlineMap
+	m.OnlineMap[client.Id] = client
 	m.addOnlineMap(client.Id, client.AppKey)
 
 	// 监听私人频道
@@ -227,12 +222,12 @@ func (m MessagePush) HandleConnection(conn net.Conn, client Client) {
 		case <-online:
 		// 主动断开
 		case <-offline:
-			delete(m.OnlineMap[client.AppKey], client.Id)
+			delete(m.OnlineMap, client.Id)
 			m.delOnlineMap(client.Id, client.AppKey)
 			return
 		// 超时退出
 		case <-time.After(360 * time.Second):
-			delete(m.OnlineMap[client.AppKey], client.Id)
+			delete(m.OnlineMap, client.Id)
 			m.delOnlineMap(client.Id, client.AppKey)
 			return
 		}
