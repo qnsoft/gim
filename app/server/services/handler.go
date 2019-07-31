@@ -168,8 +168,13 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 				log.Println("Receive input error", err)
 				return
 			} else {
-				// 广播用户数据
-				c.Publish(PublicMessageBuilder(string(buf[:n]), client))
+				msg := string(buf[:n])
+				switch msg {
+				case "Heartbeat:ack":
+				default:
+					// 广播用户数据
+					c.Publish(PublicMessageBuilder(string(buf[:n]), client))
+				}
 				online <- true
 			}
 		}
