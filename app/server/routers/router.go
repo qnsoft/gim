@@ -9,6 +9,7 @@
 package routers
 
 import (
+	"gim/app/server/interfaces"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -21,8 +22,10 @@ func init() {
 
 	App.GET("/", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{
-			"message":  "Hello world",
-			"datetime": time.Now().Format("2006-01-02 15:04:05"),
+			"info": "Hello world",
+			"time": time.Now().Format("2006-01-02 15:04:05"),
 		})
 	})
+
+	App.POST("/register", interfaces.Register)
 }

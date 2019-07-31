@@ -60,7 +60,7 @@ func PushHandler(listener net.Listener) {
 
 func init() {
 	go func() {
-		address := strings.Join([]string{Config.Services.Push.HOST, strconv.Itoa(Config.Services.Push.PORT)}, ":")
+		address := strings.Join([]string{Config.Services.Push.Host, strconv.Itoa(Config.Services.Push.Port)}, ":")
 		// Start MessagePush service
 		listener, err := net.Listen("tcp", address)
 		if err != nil {

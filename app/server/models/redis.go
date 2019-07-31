@@ -16,8 +16,8 @@ import (
 )
 
 type Redis struct {
-	HOST        string `json:"host"`
-	PORT        int    `json:"port"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
 	DB          int    `json:"db"`
 	MaxIdle     int    `json:"max_idle"`
 	MaxActive   int    `json:"max_active"`
@@ -33,7 +33,7 @@ func init() {
 		IdleTimeout: time.Duration(Config.Redis.IdleTimeout) * time.Second,
 		Wait:        true,
 		Dial: func() (conn redis.Conn, err error) {
-			conn, err = redis.Dial("tcp", strings.Join([]string{Config.Redis.HOST, strconv.Itoa(Config.Redis.PORT)}, ":"))
+			conn, err = redis.Dial("tcp", strings.Join([]string{Config.Redis.Host, strconv.Itoa(Config.Redis.Port)}, ":"))
 			if err != nil {
 				return nil, err
 			}

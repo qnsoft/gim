@@ -18,8 +18,8 @@ var Config Conf
 
 // Default
 type Public struct {
-	HOST string `json:"host"`
-	PORT int    `json:"port"`
+	Host string `json:"host"`
+	Port int    `json:"port"`
 }
 
 // IM Server
@@ -41,6 +41,7 @@ type Services struct {
 // config struct
 type Conf struct {
 	Redis    Redis
+	Mysql    Mysql
 	Services Services
 }
 

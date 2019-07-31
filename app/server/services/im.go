@@ -60,7 +60,7 @@ func ChatRoomHandler(listener net.Listener) {
 
 func init() {
 	go func() {
-		address := strings.Join([]string{Config.Services.IM.HOST, strconv.Itoa(Config.Services.IM.PORT)}, ":")
+		address := strings.Join([]string{Config.Services.IM.Host, strconv.Itoa(Config.Services.IM.Port)}, ":")
 		// Start IM service
 		listener, err := net.Listen("tcp", address)
 		if err != nil {

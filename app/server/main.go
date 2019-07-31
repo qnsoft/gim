@@ -10,6 +10,7 @@ package main
 
 import (
 	"flag"
+	_ "gim/app/server/models"
 	. "gim/app/server/routers"
 	_ "gim/app/server/services"
 	"log"
