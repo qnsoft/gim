@@ -101,18 +101,16 @@ func push(conn net.Conn) {
 }
 
 func (c Client) Handler(retry, interval int, loop bool) {
-	for try := 0; try < retry; try++ {
+	for try := 0; try <= retry; try++ {
+		if loop {
+			try--
+			<-time.After(time.Duration(interval) * time.Second)
+		}
 		conn, err := net.DialTimeout("tcp", strings.Join([]string{host, strconv.Itoa(port)}, ":"), 3*time.Second)
 		if err != nil {
 			log.Println("Trying to reconnect...")
-			if loop {
-				try--
-				<-time.After(time.Duration(interval) * time.Second)
-				continue
-			} else {
-				<-time.After(time.Duration(try*interval) * time.Second)
-				continue
-			}
+			<-time.After(time.Duration(try*interval) * time.Second)
+			continue
 		}
 
 		// 客户端认证
@@ -133,7 +131,15 @@ func (c Client) Handler(retry, interval int, loop bool) {
 			}
 		}
 
-		// TODO: 心跳
+		// Heartbeat detection
+		go func() {
+			for {
+				if _, err := conn.Write([]byte("Heartbeat:ack")); err != nil {
+					return
+				}
+				<-time.After(300 * time.Second)
+			}
+		}()
 
 		switch mode {
 		case "im":
