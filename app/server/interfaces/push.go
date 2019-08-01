@@ -8,45 +8,36 @@
 
 package interfaces
 
+import (
+	"encoding/json"
+	. "gim/app/server/services"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
+
 type PushParams struct {
 	AppKey  string `form:"appkey" json:"appkey" binding:"required"`
 	Mode    string `form:"mode" json:"mode" binding:"required"`
 	Message string `form:"message" json:"message" binding:"required"`
 }
 
-//func Push(ctx *gin.Context) {
-//	var params PushParams
-//	if err := ctx.Bind(&params); err != nil {
-//		ctx.JSON(http.StatusBadRequest, gin.H{
-//			"message": "Parameter error",
-//		})
-//	}
-//	switch params.Mode {
-//	case "im":
-//		if onlineMap, err := ChatRoomInstance.GetOnlineMap(params.AppKey); err != nil {
-//			ctx.Status(http.StatusBadRequest)
-//		} else {
-//			// 消息将推送至在线用户私人频道
-//			for _, unique := range onlineMap {
-//				privateChannel := strings.Join([]string{ChatRoomInstance.ServiceName, unique}, ":")
-//				ChatRoomInstance.Publish(privateChannel, params.Message, false)
-//			}
-//			ctx.Status(http.StatusOK)
-//		}
-//	case "push":
-//		if onlineMap, err := MessagePushInstance.GetOnlineMap(params.AppKey); err != nil {
-//			ctx.Status(http.StatusBadRequest)
-//		} else {
-//			// 消息将推送至在线用户私人频道
-//			for _, unique := range onlineMap {
-//				privateChannel := strings.Join([]string{MessagePushInstance.ServiceName, unique}, ":")
-//				MessagePushInstance.Publish(privateChannel, params.Message, false)
-//			}
-//			ctx.Status(http.StatusOK)
-//		}
-//	default:
-//		ctx.JSON(http.StatusBadRequest, gin.H{
-//			"message": "No matching pattern for mode: " + params.Mode,
-//		})
-//	}
-//}
+func Push(ctx *gin.Context) {
+	var p PushParams
+	if err := ctx.Bind(&p); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"info": "Paramets error",
+		})
+	} else {
+		// TODO 定向推送
+		buf, _ := json.Marshal(PublicMessage{AppKey: p.AppKey, To: "all", Content: p.Message})
+		switch p.Mode {
+		case "im":
+			ChatRoomInstance.Publish(string(buf))
+		case "push":
+			MessagePushInstance.Publish(string(buf))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"info": "ok",
+		})
+	}
+}

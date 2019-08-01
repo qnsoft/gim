@@ -10,6 +10,7 @@ package routers
 
 import (
 	"gim/app/server/interfaces"
+	. "gim/app/server/middlewares"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -28,4 +29,8 @@ func init() {
 	})
 
 	App.POST("/register", interfaces.Register)
+
+	services := App.Group("/service", Authentication)
+	services.POST("/push", interfaces.Push)
+
 }

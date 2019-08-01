@@ -100,7 +100,7 @@ func (b Base) Publish(msg string) {
 	}
 }
 
-// 频道订阅
+// 频道订阅、消息转发
 func (b Base) Subscribe() {
 	c := models.Pool.Get()
 	defer c.Close()
@@ -115,7 +115,7 @@ func (b Base) Subscribe() {
 				continue
 			}
 
-			// 消息转发
+			// 消息转发、TODO 定向推送
 			for _, obj := range b.OnlineMap {
 				if msg.AppKey == obj.AppKey {
 					obj.C <- fmt.Sprintf("[%s:%s] -> %s", msg.From, msg.FormName, msg.Content)
