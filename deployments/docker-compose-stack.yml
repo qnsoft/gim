@@ -1,5 +1,7 @@
 version: "3.7"
 
+# 基于 docker swarm 的 gim 依赖服务部署方法
+
 services:
   redis:
     image: redis:latest
@@ -28,6 +30,11 @@ services:
       - "/data/mysql_data:/var/lib/mysql"
     environment:
       MYSQL_ROOT_PASSWORD: "123456"
+    command:
+      - /bin/sh -c
+      - |
+        cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+        mysqld
     networks:
       - "gim"
     deploy:

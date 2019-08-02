@@ -9,7 +9,7 @@
 package services
 
 import (
-	"encoding/json"
+	"gim/app/server/middlewares"
 	. "gim/app/server/models"
 	"log"
 	"net"
@@ -32,25 +32,25 @@ func PushHandler(listener net.Listener) {
 		}
 
 		// 初始化客户端
-		var client Client
-		buf := make([]byte, 1024)
-		for {
-			if n, _ := conn.Read(buf); n < 1024 {
-				if err = json.Unmarshal(buf[:n], &client); err != nil {
-					log.Println("Client initialization failed", err)
-					return
-				}
-				// BUG: 验证 appkey 的有效性
-				client.Addr = conn.RemoteAddr().String()
-				client.C = make(chan string)
-				break
-			}
+		client, err := InitClient(conn)
+		if err != nil {
+			log.Println("IM: initClient failed", err)
+			conn.Close()
+			continue
+		}
+
+		// 客户端有效性检验
+		if !middlewares.Validate(client.AppKey, client.Token) {
+			log.Println("IM: Invalid token")
+			conn.Close()
+			continue
 		}
 
 		// 运行模式下发
 		if _, err := conn.Write([]byte(MessagePushInstance.ServiceName)); err != nil {
-			log.Println("Connection client exception", err)
-			return
+			log.Println("IM: Send MessagePushInstance.ServiceName failed", err)
+			conn.Close()
+			continue
 		}
 
 		// 进入连接处理流程

@@ -9,38 +9,17 @@
 package interfaces
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"gim/app/server/models"
+	"gim/app/tools"
 	"github.com/gin-gonic/gin"
-	"math/rand"
 	"net/http"
-	"time"
 )
 
 type RegisterParams struct {
 	AppKey    string `json:"app_key" form:"app_key" binding:"required"`
-	AppSecret string `json:"app_secret" form:"app_secret"`
+	AppSecret string `json:"app_secret"`
 	Title     string `json:"title" form:"title" binding:"required"`
 	Reset     bool   `json:"reset" form:"reset"`
-}
-
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func StringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
-func GetMD5Hash(text string) string {
-	hash := md5.New()
-	hash.Write([]byte(text))
-	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func Register(ctx *gin.Context) {
@@ -50,12 +29,12 @@ func Register(ctx *gin.Context) {
 			"info": "Paramets error",
 		})
 	} else {
-		p.AppKey = GetMD5Hash(p.AppKey)
+		p.AppKey = tools.GetMD5Hash(p.AppKey, false)
 		switch p.Reset {
 		case true:
-			p.AppSecret = GetMD5Hash(p.AppKey + StringWithCharset(4, charset))
+			p.AppSecret = tools.GetMD5Hash(p.AppKey, true)
 		case false:
-			p.AppSecret = GetMD5Hash(p.AppKey + "1990")
+			p.AppSecret = tools.GetMD5Hash(p.AppKey+"1990", false)
 		}
 		// 数据入库
 		_, err := models.DB.Exec("insert into g_partners (app_key, app_secret, title) values (?, ?, ?)", p.AppKey, p.AppSecret, p.Title)

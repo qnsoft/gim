@@ -22,6 +22,7 @@ import (
 
 type Client struct {
 	AppKey string      `json:"app_key" binding:"required"` // 认证标识
+	Token  string      `json:"token" binding:"required"`   // 认证令牌
 	Id     string      `json:"id" binding:"required"`      // 客户端唯一ID, 由客户端维护该字段的唯一性
 	Name   string      `json:"name" binding:"required"`    // 客户端名称
 	City   string      `json:"city"`                       // 城市
@@ -125,6 +126,21 @@ func (b Base) Subscribe() {
 		case error:
 			log.Printf("Unknown type, %T, %+v\n", v, v)
 			return
+		}
+	}
+}
+
+// 客户端初始化
+func InitClient(conn net.Conn) (client Client, err error) {
+	buf := make([]byte, 1024)
+	for {
+		if n, _ := conn.Read(buf); n < 1024 {
+			if err = json.Unmarshal(buf[:n], &client); err != nil {
+				return client, err
+			}
+			client.Addr = conn.RemoteAddr().String()
+			client.C = make(chan string)
+			return client, nil
 		}
 	}
 }

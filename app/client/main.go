@@ -11,6 +11,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"gim/app/tools"
 	"log"
 	"net"
 	"os"
@@ -20,23 +21,30 @@ import (
 )
 
 var (
-	help     bool
-	host     string
-	port     int
-	appKey   string
-	id       string
-	name     string
-	city     string
-	retry    int
-	interval int
-	loop     bool
+	help      bool
+	host      string
+	port      int
+	appKey    string
+	appSecret string
+	id        string
+	name      string
+	city      string
+	retry     int
+	interval  int
+	loop      bool
 )
 
 type Client struct {
-	AppKey string `json:"app_key"` // 认证标识
-	Id     string `json:"id"`      // 客户端唯一ID, 由客户端维护该字段的唯一性
-	Name   string `json:"name"`    // 客户端名称
-	City   string `json:"city"`    // 城市
+	AppKey    string `json:"app_key"`    // 认证标识
+	AppSecret string `json:"app_secret"` // 安全码
+	Token     string `json:"token"`      // 认证令牌
+	Id        string `json:"id"`         // 客户端唯一ID, 由客户端维护该字段的唯一性
+	Name      string `json:"name"`       // 客户端名称
+	City      string `json:"city"`       // 城市
+}
+
+func Tokenizer() string {
+	return tools.GetMD5Hash(appKey+appSecret, false)
 }
 
 func im(conn net.Conn) {
@@ -101,14 +109,13 @@ func push(conn net.Conn) {
 }
 
 func (c Client) Handler(retry, interval int, loop bool) {
-	for try := 0; try <= retry; try++ {
+	for try := 0; try < retry; try++ {
 		if loop {
-			try--
-			<-time.After(time.Duration(interval) * time.Second)
+			try, interval = 1, 5
 		}
 		conn, err := net.DialTimeout("tcp", strings.Join([]string{host, strconv.Itoa(port)}, ":"), 3*time.Second)
 		if err != nil {
-			log.Println("Trying to reconnect...")
+			log.Println("Trying to reconnect...", err)
 			<-time.After(time.Duration(try*interval) * time.Second)
 			continue
 		}
@@ -158,6 +165,7 @@ func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "GIM server host")
 	flag.IntVar(&port, "port", 8081, "GIM server port")
 	flag.StringVar(&appKey, "appkey", "", "Authorized appkey")
+	flag.StringVar(&appSecret, "appsecret", "", "Authorized appsecret")
 	flag.StringVar(&id, "id", "001", "Client unique id")
 	flag.StringVar(&name, "name", "guest", "Client name")
 	flag.StringVar(&city, "city", "bj", "Client city name")
@@ -170,7 +178,7 @@ func main() {
 		flag.Usage()
 	} else {
 		// 初始化客户端
-		client := Client{AppKey: appKey, Id: id, Name: name, City: city}
+		client := Client{AppKey: appKey, Token: Tokenizer(), Id: id, Name: name, City: city}
 		client.Handler(retry, interval, loop)
 	}
 }
