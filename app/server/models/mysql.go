@@ -54,8 +54,8 @@ func init() {
 	DB.SetConnMaxLifetime(100)
 	DB.SetMaxIdleConns(10)
 	if err := DB.Ping(); err != nil {
-		log.Println("Open database failed !", err)
+		log.Println("Mysql: Open database failed, ", err)
 		return
 	}
-	log.Println("Database connection succeeded !")
+	log.Println("Mysql: Connection established successfully !")
 }

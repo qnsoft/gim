@@ -16,7 +16,7 @@ import (
 )
 
 type PushParams struct {
-	AppKey  string `form:"appkey" json:"appkey" binding:"required"`
+	AppKey  string `form:"app_key" json:"app_key" binding:"required"`
 	Mode    string `form:"mode" json:"mode" binding:"required"`
 	Message string `form:"message" json:"message" binding:"required"`
 }

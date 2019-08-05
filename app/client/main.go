@@ -43,10 +43,6 @@ type Client struct {
 	City      string `json:"city"`       // 城市
 }
 
-func Tokenizer() string {
-	return tools.GetMD5Hash(appKey+appSecret, false)
-}
-
 func im(conn net.Conn) {
 	defer conn.Close()
 
@@ -58,7 +54,7 @@ func im(conn net.Conn) {
 		for {
 			if n, err := conn.Read(buf); err != nil {
 				closed <- true
-				log.Println("Connection is closed")
+				log.Println("IM: Connection is closed")
 				return
 			} else {
 				online <- true
@@ -72,12 +68,12 @@ func im(conn net.Conn) {
 		buf := make([]byte, 1024)
 		for {
 			if n, err := os.Stdin.Read(buf); err != nil {
-				log.Println("Receive terminal input error", err)
+				log.Println("IM: Receive terminal input error, ", err)
 				continue
 			} else {
 				if _, err := conn.Write(buf[:n]); err != nil {
 					closed <- true
-					log.Println("Failed to send data", err)
+					log.Println("IM: Failed to send data, ", err)
 					return
 				}
 			}
@@ -100,7 +96,7 @@ func push(conn net.Conn) {
 	buf := make([]byte, 1024)
 	for {
 		if n, err := conn.Read(buf); err != nil {
-			log.Println("Connection is closed")
+			log.Println("PUSH: Connection is closed")
 			return
 		} else {
 			log.Println(string(buf[:n]))
@@ -115,7 +111,7 @@ func (c Client) Handler(retry, interval int, loop bool) {
 		}
 		conn, err := net.DialTimeout("tcp", strings.Join([]string{host, strconv.Itoa(port)}, ":"), 3*time.Second)
 		if err != nil {
-			log.Println("Trying to reconnect...", err)
+			log.Println("Handler: Trying to reconnect..., ", err)
 			<-time.After(time.Duration(try*interval) * time.Second)
 			continue
 		}
@@ -130,7 +126,7 @@ func (c Client) Handler(retry, interval int, loop bool) {
 			} else {
 				buf := make([]byte, 1024)
 				if n, err := conn.Read(buf); err != nil {
-					log.Println("Connection is closed")
+					log.Println("Handler: Connection is closed")
 					return
 				} else {
 					mode = string(buf[:n])
@@ -154,10 +150,10 @@ func (c Client) Handler(retry, interval int, loop bool) {
 		case "push":
 			push(conn)
 		default:
-			log.Fatalln("No matching pattern")
+			log.Fatalln("Handler: No matching pattern")
 		}
 	}
-	log.Println("Unable to connect to GIM server")
+	log.Println("Handler: Unable to connect to GIM server")
 }
 
 func main() {
@@ -178,7 +174,9 @@ func main() {
 		flag.Usage()
 	} else {
 		// 初始化客户端
-		client := Client{AppKey: appKey, Token: Tokenizer(), Id: id, Name: name, City: city}
+		client := Client{
+			AppKey: appKey, Token: tools.GetMD5Hash(appKey+appSecret, false), Id: id, Name: name, City: city,
+		}
 		client.Handler(retry, interval, loop)
 	}
 }

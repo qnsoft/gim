@@ -48,7 +48,7 @@ type Conf struct {
 // Json formatted printing method
 func (c Conf) Print() {
 	if buf, err := json.MarshalIndent(c, "", "\t"); err != nil {
-		log.Println("Json format error: ", err)
+		log.Println("Config->Print: Json format failed, ", err)
 	} else {
 		log.Println(string(buf))
 	}
@@ -57,10 +57,10 @@ func (c Conf) Print() {
 // loading config
 func init() {
 	if buf, err := ioutil.ReadFile("app/server/configs/config.json"); err != nil {
-		log.Fatalf("Unable to load configuration file: %v", err)
+		log.Fatalf("Config: Unable to load configuration file, %v\n", err)
 	} else {
 		if err = json.Unmarshal(buf, &Config); err != nil {
-			log.Fatalf("Configuration file format error: %v", err)
+			log.Fatalf("Config: Configuration file format failed, %v", err)
 		}
 	}
 }

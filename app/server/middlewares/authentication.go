@@ -18,7 +18,7 @@ import (
 )
 
 type Auth struct {
-	AppKey string `json:"appkey" form:"appkey" binding:"required"`
+	AppKey string `json:"app_key" form:"app_key" binding:"required"`
 	Token  string `json:"token" form:"token" binding:"required"`
 }
 
@@ -28,14 +28,14 @@ func Validate(appKey, token string) bool {
 	// 读取缓存
 	appSecret, err := redis.String(c.Do("GET", "appkey:"+appKey))
 	if err != nil {
-		log.Println("Redis->GET: Validate failed", err)
+		log.Println("Middleware->Validate: Redis GET failed, ", err)
 	}
 	// 读取数据库
 	if appSecret == "" {
 		sql := "select app_secret from g_partners where app_key=?"
 		row := models.DB.QueryRow(sql, appKey)
 		if err = row.Scan(&appSecret); err != nil {
-			log.Println("Mysql->QueryRow Scan: Validate failed", err)
+			log.Println("Middleware->Validate: Mysql QueryRow failed, ", err)
 			return false
 		}
 		// 加入缓存

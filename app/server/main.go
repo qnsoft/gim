@@ -35,7 +35,7 @@ func main() {
 	} else {
 		// Start Restful API
 		if err := App.Run(); err != nil {
-			log.Fatalln("Service startup failed.", err)
+			log.Fatalln("GIM: Service startup failed, ", err)
 		}
 	}
 }
