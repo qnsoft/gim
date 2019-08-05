@@ -27,28 +27,27 @@ func PushHandler(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("Listener accept error: ", err)
+			log.Println("PUSH: Listening for connection failure, ", err)
 			continue
 		}
 
 		// 初始化客户端
 		client, err := InitClient(conn)
 		if err != nil {
-			log.Println("IM: initClient failed", err)
+			log.Println("PUSH: initClient failed, ", err)
 			conn.Close()
 			continue
 		}
 
 		// 客户端有效性检验
 		if !middlewares.Validate(client.AppKey, client.Token) {
-			log.Println("IM: Invalid token")
 			conn.Close()
 			continue
 		}
 
 		// 运行模式下发
 		if _, err := conn.Write([]byte(MessagePushInstance.ServiceName)); err != nil {
-			log.Println("IM: Send MessagePushInstance.ServiceName failed", err)
+			log.Println("PUSH: Send MessagePushInstance.ServiceName failed, ", err)
 			conn.Close()
 			continue
 		}
@@ -64,9 +63,9 @@ func init() {
 		// Start MessagePush service
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
-			log.Fatalln("MessagePush service startup failed", err)
+			log.Fatalln("PUSH: Service startup failed, ", err)
 		}
-		log.Printf("MessagePush service starting TCP on: %s\n", address)
+		log.Println("PUSH: Service starting tcp on: ", address)
 
 		defer listener.Close()
 

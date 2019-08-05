@@ -27,28 +27,27 @@ func ChatRoomHandler(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("Unable to establish connection", err)
+			log.Println("IM: Listening for connection failure, ", err)
 			continue
 		}
 
 		// 初始化客户端
 		client, err := InitClient(conn)
 		if err != nil {
-			log.Println("IM: initClient failed", err)
+			log.Println("IM: initClient failed, ", err)
 			conn.Close()
 			continue
 		}
 
 		// 客户端有效性检验
 		if !middlewares.Validate(client.AppKey, client.Token) {
-			log.Println("IM: Invalid token")
 			conn.Close()
 			continue
 		}
 
 		// 运行模式下发
 		if _, err := conn.Write([]byte(ChatRoomInstance.ServiceName)); err != nil {
-			log.Println("IM: Send ChatRoomInstance.ServiceName failed", err)
+			log.Println("IM: Send ChatRoomInstance.ServiceName failed, ", err)
 			conn.Close()
 			continue
 		}
@@ -64,9 +63,9 @@ func init() {
 		// Start IM service
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
-			log.Fatalln("IM service startup failed", err)
+			log.Fatalln("IM: Service startup failed, ", err)
 		}
-		log.Printf("IM service starting TCP on: %s\n", address)
+		log.Println("IM: Service starting tcp on: ", address)
 
 		defer listener.Close()
 

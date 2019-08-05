@@ -59,7 +59,7 @@ func (b Base) addOnlineMap(id, appKey string) {
 	c := models.Pool.Get()
 	defer c.Close()
 	if _, err := c.Do("SADD", strings.Join([]string{appKey, b.ServiceName, "onlineMap"}, ":"), id); err != nil {
-		log.Println("Redis: SADD failed", err)
+		log.Println("Redis: SADD failed, ", err)
 	}
 }
 
@@ -68,7 +68,7 @@ func (b Base) delOnlineMap(id, appKey string) {
 	c := models.Pool.Get()
 	defer c.Close()
 	if _, err := c.Do("SREM", strings.Join([]string{appKey, b.ServiceName, "onlineMap"}, ":"), id); err != nil {
-		log.Println("Redis: SREM failed", err)
+		log.Println("Redis: SREM failed, ", err)
 	}
 }
 
@@ -79,7 +79,7 @@ func (b Base) GetOnlineMap(appKey string) ([]string, error) {
 	_ = c.Send("SMEMBERS", strings.Join([]string{appKey, b.ServiceName, "onlineMap"}, ":"))
 	_ = c.Flush()
 	if reply, err := redis.Strings(c.Receive()); err != nil {
-		log.Println("Redis: SMEMBERS failed", err)
+		log.Println("Redis: SMEMBERS failed, ", err)
 		return nil, err
 	} else {
 		return reply, nil
@@ -97,7 +97,7 @@ func (b Base) Publish(msg string) {
 	c := models.Pool.Get()
 	defer c.Close()
 	if _, err := c.Do("PUBLISH", strings.Join([]string{b.ServiceName, "Broadcast"}, ":"), msg); err != nil {
-		log.Println("Redis: Channel failed to post message", err)
+		log.Println("Redis: Channel failed to post message, ", err)
 	}
 }
 
@@ -112,7 +112,7 @@ func (b Base) Subscribe() {
 		case redis.Message:
 			var msg PublicMessage
 			if err := json.Unmarshal(v.Data, &msg); err != nil {
-				log.Println("Json Unmarshal failed", err)
+				log.Println("Subscribe: Json Unmarshal failed, ", err)
 				continue
 			}
 
@@ -124,7 +124,7 @@ func (b Base) Subscribe() {
 			}
 		case redis.Subscription:
 		case error:
-			log.Printf("Unknown type, %T, %+v\n", v, v)
+			log.Printf("Subscribe->Receive(): Unknown type, %T, %+v\n", v, v)
 			return
 		}
 	}
@@ -159,7 +159,7 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 	go func() {
 		for msg := range client.C {
 			if _, err := conn.Write([]byte(msg)); err != nil {
-				log.Println("Connection client exception", err)
+				log.Printf("HandleConnection->%s: Client connection is not available, %s\n", c.ServiceName, err)
 				return
 			}
 		}
@@ -178,10 +178,10 @@ func (c ChatRoom) HandleConnection(conn net.Conn, client Client) {
 			if n, err := conn.Read(buf); err != nil {
 				offline <- true
 				if err == io.EOF {
-					log.Println("Customer has closed the connection")
+					log.Printf("HandleConnection->%s: Client has closed the connection\n", c.ServiceName)
 					return
 				}
-				log.Println("Receive input error", err)
+				log.Printf("HandleConnection->%s: Receive input failed\n", err)
 				return
 			} else {
 				msg := string(buf[:n])
@@ -229,7 +229,7 @@ func (m MessagePush) HandleConnection(conn net.Conn, client Client) {
 	go func() {
 		for msg := range client.C {
 			if _, err := conn.Write([]byte(msg)); err != nil {
-				log.Println("Connection client exception", err)
+				log.Printf("HandleConnection->%s: Client connection is not available, %s\n", m.ServiceName, err)
 				return
 			}
 		}
